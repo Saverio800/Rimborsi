@@ -2,18 +2,1858 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f4f0">
 <title>Rimborsi trasferte</title>
 <style>
-  body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#f6f5f2;color:#222}
-  @media (prefers-color-scheme:dark){body{background:#16171a;color:#e8e6e1}}
-  p{opacity:.65}
+:root{
+  --bg:#f5f4f0;--surface:#ffffff;--surface-2:#f0efe9;--line:#e3e1d9;--line-2:#d3d0c5;
+  --text:#1d1d1b;--muted:#6d6b64;--faint:#9a978e;
+  --accent:#2350d8;--accent-ink:#ffffff;--accent-soft:#e8eeff;
+  --ok:#17784a;--ok-soft:#e3f3ea;--warn:#a85a07;--warn-soft:#fdf1df;--bad:#b42318;--bad-soft:#fde8e6;
+  --ai:#e9efff;--ai-line:#8fa9f5;--guess:#fff3d6;--guess-line:#e8b54f;
+  --gT:#2f6fd0;--gS:#7a4cc2;--gR:#c0571b;
+  --radius:10px;--shadow:0 1px 2px rgba(20,20,10,.05),0 10px 30px rgba(20,20,10,.08);
+  --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#141413;--surface:#1c1c1a;--surface-2:#252522;--line:#33322e;--line-2:#45443e;
+  --text:#ecebe5;--muted:#a3a198;--faint:#77756d;
+  --accent:#7b9bff;--accent-ink:#0f1630;--accent-soft:#1f2744;
+  --ok:#5fca93;--ok-soft:#173326;--warn:#f0a94b;--warn-soft:#3a2a12;--bad:#ff8a7a;--bad-soft:#3e1d19;
+  --ai:#1d2848;--ai-line:#4864b8;--guess:#3a2f15;--guess-line:#8f6c25;
+  --gT:#7aa7f0;--gS:#b393ea;--gR:#ee9a62;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.muted{color:var(--muted)}.small{font-size:12px}
+.hidden{display:none!important}
+a{color:var(--accent)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);background:var(--surface);border-radius:8px;padding:7px 12px;cursor:pointer;white-space:nowrap;line-height:1.2}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{color:var(--bad)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{padding:4px 9px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+.icon-btn{border:0;background:transparent;cursor:pointer;width:32px;height:32px;border-radius:8px;display:inline-grid;place-items:center;color:var(--muted)}
+.icon-btn:hover{background:var(--surface-2);color:var(--text)}
+svg.i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* layout */
+.topbar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1320px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:12px}
+.brand{font-weight:700;font-size:17px;letter-spacing:-.01em}
+.store-pill{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 9px;display:inline-flex;gap:6px;align-items:center}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.dot.local{background:var(--warn)}
+.spacer{flex:1}
+main{max-width:1320px;margin:0 auto;padding:18px 20px 60px}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,var(--accent))}
+.kpi-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.kpi-name{font-weight:650}
+.kpi-big{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:6px;font-variant-numeric:tabular-nums}
+.kpi-big small{font-size:12px;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:6px}
+.kpi-groups{font-size:12px;color:var(--muted);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 12px}
+.kpi-groups b{font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.kpi-row div span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.kpi-row div b{font-variant-numeric:tabular-nums;font-size:15px}
+.kpi-foot{font-size:12px;color:var(--muted);margin-top:8px}
+.res-pos{color:var(--warn)}.res-zero{color:var(--ok)}
+
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.filters select,.filters input{border:1px solid var(--line-2);background:var(--surface);border-radius:8px;padding:6px 9px}
+.filters input[type=search]{min-width:220px;flex:1;max-width:340px}
+
+.tablewrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:auto}
+table.grid{width:100%;border-collapse:collapse;min-width:1060px}
+.grid th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;white-space:nowrap}
+.grid th.num{text-align:right}
+.grid td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+.grid tbody tr{cursor:pointer}
+.grid tbody tr:hover td{background:var(--surface-2)}
+.grid tfoot td{font-weight:650;background:var(--surface-2);border-bottom:0}
+.grid td.zero{color:var(--faint)}
+.t-title{font-weight:600}
+.t-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.typeic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--surface-2);color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap}
+.st-bozza{background:var(--surface-2);color:var(--muted);border:1px solid var(--line-2)}
+.st-inviata{background:var(--ok-soft);color:var(--ok)}
+.warnbadge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--warn)}
+.warnbadge.err{color:var(--bad)}
+.kmsub{display:block;font-size:11px;color:var(--muted)}
+.empty{padding:48px 20px;text-align:center;color:var(--muted)}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(15,15,10,.45);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:4vh 16px;overflow:auto}
+.sheet{background:var(--bg);border-radius:14px;box-shadow:var(--shadow);width:100%;max-width:640px;display:flex;flex-direction:column;max-height:92vh}
+.sheet.wide{max-width:1040px}
+.sheet-head{display:flex;gap:12px;align-items:flex-start;padding:16px 20px;border-bottom:1px solid var(--line);background:var(--surface);border-radius:14px 14px 0 0}
+.sheet-head h2{margin:2px 0 0;font-size:19px;letter-spacing:-.01em}
+.eyebrow{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.head-tot{margin-left:auto;text-align:right}
+.head-tot .big{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.sheet-body{padding:16px 20px;overflow:auto;flex:1}
+.sheet-foot{display:flex;gap:8px;align-items:center;padding:12px 20px;border-top:1px solid var(--line);background:var(--surface);border-radius:0 0 14px 14px;flex-wrap:wrap}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px}
+.card h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.sec-head h3{margin:0}
+.fgrid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px 12px}
+.fld{display:flex;flex-direction:column;gap:4px;grid-column:span 4;min-width:0}
+.fld>span{font-size:12px;color:var(--muted)}
+.fld.s2{grid-column:span 2}.fld.s3{grid-column:span 3}.fld.s6{grid-column:span 6}.fld.s8{grid-column:span 8}.fld.s12{grid-column:span 12}
+.fld input,.fld select,.fld textarea{border:1px solid var(--line-2);background:var(--surface);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
+.fld textarea{resize:vertical;min-height:60px}
+.fld input:disabled,.fld select:disabled,.fld textarea:disabled{background:var(--surface-2);color:var(--muted)}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 35%,transparent);border-color:var(--accent)}
+.check{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding-top:20px}
+.check input{width:16px;height:16px}
+.ai-doc{background:var(--ai)!important;border-color:var(--ai-line)!important}
+.ai-guess{background:var(--guess)!important;border-color:var(--guess-line)!important}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px;border:1px solid}
+.banner{border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:13px}
+.banner.ai{background:var(--ai);border:1px solid var(--ai-line)}
+.banner.info{background:var(--surface-2);border:1px solid var(--line)}
+.avvisi{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:6px}
+.avvisi li{border-radius:8px;padding:7px 11px;font-size:13px;display:flex;gap:8px;align-items:flex-start}
+.avvisi li.warn{background:var(--warn-soft);color:var(--warn)}
+.avvisi li.err{background:var(--bad-soft);color:var(--bad)}
+.kmcalc{margin-top:10px;font-size:13px;color:var(--muted)}
+.kmcalc b{color:var(--text)}
+
+.srow{display:grid;grid-template-columns:86px 1fr auto 110px 72px;gap:10px;align-items:center;padding:9px 4px;border-top:1px solid var(--line)}
+.srow:first-child{border-top:0}
+.srow.km{color:var(--muted)}
+.s-main b{font-weight:600}
+.s-sub{font-size:12px;color:var(--muted)}
+.s-doc{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.s-act{display:flex;justify-content:flex-end}
+.gtag{font-size:10.5px;font-weight:650;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:1px;border:1px solid currentColor;opacity:.9}
+.g-T{color:var(--gT)}.g-S{color:var(--gS)}.g-R{color:var(--gR)}
+.doclink{display:inline-flex;align-items:center;gap:4px;font-size:12px;border:1px solid var(--line-2);border-radius:6px;padding:2px 7px;cursor:pointer;background:var(--surface);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doclink:hover{background:var(--surface-2)}
+.sform{border:1px solid var(--accent);border-radius:var(--radius);padding:12px 14px;margin:8px 0;background:var(--surface)}
+.sform-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;align-items:center;flex-wrap:wrap}
+.drop{border:1.5px dashed var(--line-2);border-radius:var(--radius);padding:18px;text-align:center;color:var(--muted);cursor:pointer;display:block;background:var(--surface)}
+.drop:hover,.drop.over{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.files{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.choice{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.choice button{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--radius);padding:14px;text-align:left;cursor:pointer}
+.choice button.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.choice b{display:block;margin-bottom:3px}
+.choice span{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:-4px 0 14px;overflow-x:auto}
+.tabs button{border:0;background:transparent;padding:8px 12px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+table.mini{width:100%;border-collapse:collapse;font-size:13px}
+.mini th{text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;padding:6px;border-bottom:1px solid var(--line)}
+.mini th.num{text-align:right}
+.mini td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.mini input,.mini select{border:1px solid var(--line-2);background:var(--surface);border-radius:6px;padding:5px 7px;width:100%;min-width:0}
+.mini tr.sel td{background:var(--accent-soft)}
+.folderlist{border:1px solid var(--line);border-radius:8px;max-height:300px;overflow:auto;background:var(--surface)}
+.folderlist button{display:flex;width:100%;gap:8px;align-items:center;border:0;border-bottom:1px solid var(--line);background:transparent;padding:9px 12px;cursor:pointer;text-align:left}
+.folderlist button:hover{background:var(--surface-2)}
+.crumbs{font-size:13px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.crumbs button{border:0;background:none;color:var(--accent);cursor:pointer;padding:0}
+
+.welcome{max-width:760px;margin:6vh auto;padding:0 20px}
+.welcome h1{font-size:28px;letter-spacing:-.02em;margin:0 0 6px}
+.wgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:300;box-shadow:var(--shadow);font-size:13px;max-width:90vw}
+.toast.err{background:var(--bad);color:#fff}
+.busy{position:fixed;inset:0;z-index:250;background:rgba(15,15,10,.25);display:grid;place-items:center}
+.busy div{background:var(--surface);border-radius:12px;padding:16px 22px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center}
+.spin{width:18px;height:18px;border:2.5px solid var(--line-2);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;display:inline-block;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+@media (max-width:820px){
+  .topbar-in{padding:10px 14px;gap:8px}
+  .btn .lbl,.store-pill .lbl{display:none}
+  main{padding:14px 14px 60px}
+  .kpis{grid-template-columns:1fr}
+  table.grid{min-width:0}
+  .grid thead{display:none}
+  .grid tbody tr{display:grid;grid-template-columns:36px 1fr auto;gap:2px 10px;padding:12px;border-bottom:1px solid var(--line)}
+  .grid tbody td{border:0;padding:0}
+  .grid td.c-cat,.grid td.c-soc-d{display:none}
+  .grid td.c-ic{grid-row:span 3}
+  .grid td.c-date{grid-column:2;font-size:12px;color:var(--muted)}
+  .grid td.c-title{grid-column:2}
+  .grid td.c-tot{grid-column:3;grid-row:1 / span 2;font-weight:700;font-size:15px}
+  .grid td.c-meta{grid-column:2 / span 2;display:flex!important;gap:10px;align-items:center;flex-wrap:wrap}
+  .grid tfoot{display:none}
+  .fld,.fld.s3,.fld.s2,.fld.s6,.fld.s8{grid-column:span 12}
+  .fld.half{grid-column:span 6}
+  .srow{grid-template-columns:1fr auto;gap:2px 10px}
+  .srow .s-date{grid-column:1;font-size:12px;color:var(--muted)}
+  .srow .s-amt{grid-column:2;grid-row:1 / span 2}
+  .srow .s-main{grid-column:1}
+  .srow .s-doc{grid-column:1;justify-content:flex-start}
+  .srow .s-act{grid-column:2}
+  .choice,.wgrid{grid-template-columns:1fr}
+  .overlay{padding:0}
+  .sheet,.sheet.wide{max-height:100vh;height:100%;border-radius:0}
+  .sheet-head,.sheet-foot{border-radius:0}
+}
+.c-meta{display:none}
 </style>
 </head>
 <body>
-  <main>
+<header class="topbar hidden" id="topbar">
+  <div class="topbar-in">
+    <span class="brand">Rimborsi</span>
+    <span class="store-pill" id="storePill"></span>
+    <span class="spacer"></span>
+    <button class="btn ghost" data-act="reload" title="Ricarica dati"><svg class="i" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg></button>
+    <button class="btn" data-act="settings"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="lbl">Impostazioni</span></button>
+    <button class="btn" data-act="export"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span class="lbl">Esporta</span></button>
+    <button class="btn primary" data-act="new"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="lbl">Nuova pratica</span></button>
+  </div>
+</header>
+<main id="app"></main>
+
+<script>
+'use strict';
+/* =========================================================
+   Rimborsi trasferte — app personale single-file
+   Archivio: OneDrive personale (Microsoft Graph) oppure locale (IndexedDB)
+   ========================================================= */
+const APP_VERSION = '0.1.0';
+const DEFAULT_MODEL = 'claude-sonnet-5-5';
+const PDFLIB_URL = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+const GRAPH = 'https://graph.microsoft.com/v1.0';
+const AUTH = 'https://login.microsoftonline.com/consumers/oauth2/v2.0';
+const SCOPES = 'https://graph.microsoft.com/Files.ReadWrite offline_access openid profile';
+const POINTER_FILE = 'rimborsi-trasferte.json';
+
+/* ---------------- utility ---------------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const r2 = n => Math.round(((+n || 0) + Number.EPSILON) * 100) / 100;
+const fmtE = n => (+n || 0).toLocaleString('it-IT', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const fmtK = n => (+n || 0).toLocaleString('it-IT', {maximumFractionDigits: 1});
+const fmtD = d => d ? d.slice(0, 10).split('-').reverse().join('/') : '';
+const fmtT = t => t == null ? '—' : (+t).toLocaleString('it-IT', {minimumFractionDigits: 4, maximumFractionDigits: 4});
+const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const uid = () => Math.random().toString(36).slice(2, 10);
+const clone = o => JSON.parse(JSON.stringify(o));
+const yearOf = d => +(d || today()).slice(0, 4);
+const daysBetween = (a, b) => Math.max(1, Math.round((new Date(b || a) - new Date(a)) / 864e5) + 1);
+const ls = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} }
+};
+const ss = {
+  get(k) { try { return JSON.parse(sessionStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k) { try { sessionStorage.removeItem(k); } catch {} }
+};
+const ICON = {
+  car: '<svg class="i" viewBox="0 0 24 24"><path d="M5 17h14M6 17v2M18 17v2M4 13l2-6h12l2 6v4H4z"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="14" r="1"/></svg>',
+  rec: '<svg class="i" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg>',
+  pen: '<svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
+  trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  doc: '<svg class="i" viewBox="0 0 24 24"><path d="M14 3H6v18h12V7zM14 3v4h4"/></svg>',
+  warn: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3 2 20h20zM12 10v4M12 17v.5"/></svg>',
+  x: '<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  folder: '<svg class="i" viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v11H3z"/></svg>',
+  spark: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg>'
+};
+
+/* ---------------- dominio ---------------- */
+const CATS = [
+  {id:'pedaggio',    label:'Pedaggio / Telepass',      short:'pedaggio',    g:'T', col:'telepass'},
+  {id:'parcheggio',  label:'Parcheggio',               short:'parcheggio',  g:'T', col:'parcheggio'},
+  {id:'vitto',       label:'Vitto',                    short:'vitto',       g:'T', col:'vitto',    tracc:true, tetto:true},
+  {id:'alloggio',    label:'Alloggio',                 short:'alloggio',    g:'T', col:'alloggio', tracc:true, tetto:true},
+  {id:'treno_aereo', label:'Treno / aereo',            short:'viaggio',     g:'T', col:'altro',    tracc:true},
+  {id:'taxi',        label:'Taxi / NCC',               short:'taxi',        g:'T', col:'altro',    tracc:true},
+  {id:'mezzi',       label:'Mezzi pubblici',           short:'mezzi',       g:'T', col:'altro'},
+  {id:'altro_trasf', label:'Altra spesa di trasferta', short:'altro',       g:'T', col:'altro'},
+  {id:'conferenza',  label:'Conferenza / corso',       short:'conferenza',  g:'S', col:'altro'},
+  {id:'software',    label:'Software / abbonamento',   short:'software',    g:'S', col:'altro'},
+  {id:'altro_soc',   label:'Altro costo società',      short:'costo',       g:'S', col:'altro'},
+  {id:'rappr_pasto', label:'Pasto di rappresentanza',  short:'rappresentanza', g:'R', col:'altro'},
+  {id:'rappr_altro', label:'Altra rappresentanza',     short:'rappresentanza', g:'R', col:'altro'},
+];
+const CAT = Object.fromEntries(CATS.map(c => [c.id, c]));
+const catOf = id => CAT[id] || CAT.altro_trasf;
+const GROUPS = {T:'Trasferta', S:'Costo società', R:'Rappresentanza'};
+const PAGAMENTI = {carta:'Carta', bancomat:'Bancomat', bonifico:'Bonifico', telepass:'Telepass', contanti:'Contanti'};
+const TRACCIABILI = new Set(['carta','bancomat','bonifico','telepass']);
+const INTESTAZIONI = {scontrino:'Scontrino / ricevuta', societa:'Fattura alla società', me:'Fattura a me'};
+const COLS = [['km','Km'],['telepass','Telepass'],['parcheggio','Parcheggio'],['vitto','Vitto'],['alloggio','Alloggio'],['altro','Altro']];
+const gruppoOf = s => s.gruppo || catOf(s.categoria).g;
+
+function defaultConfig() {
+  return {
+    schema: 1,
+    richiedente: 'Saverio Ramirez',
+    societa: [
+      {id:'delos', nome:'Delos S.r.l.', comuneSede:'', attivaDal:'', colore:'#2f6fd0'},
+      {id:'emba', nome:'EMBA Capital Partners', comuneSede:'', attivaDal:'', colore:'#c0571b'}
+    ],
+    veicoli: [
+      {id:'cayenne', nome:'Porsche Cayenne E-Hybrid', targa:'', tariffe:[{anno:2026, euroKm:1.2916, fonte:'ACI GU 23/12/2025 — provvisoria (Cayenne 3.0 V6)'}]}
+    ],
+    tratte: [],
+    parametri: {tettoItalia:180.76, tettoEstero:258.23}
+  };
+}
+
+/* ---------------- stato ---------------- */
+const DEV_KEY = 'rimborsi.device.v1', TOK_KEY = 'rimborsi.tok.v1', FILT_KEY = 'rimborsi.filters.v1', LAST_KEY = 'rimborsi.last.v1';
+let dev = Object.assign({mode:null, clientId:'', root:'', apiKey:'', model:DEFAULT_MODEL, account:''}, ls.get(DEV_KEY, {}));
+const saveDev = () => ls.set(DEV_KEY, dev);
+let fs = null;
+const S = {cfg:null, cfgEtag:null, idx:null, idxEtag:null, pag:null, pagEtag:null,
+  f: Object.assign({anno:'', mese:'', soc:'', stato:'', q:''}, ls.get(FILT_KEY, {}))};
+const pratiche = () => Object.values(S.idx?.pratiche || {});
+const socById = id => S.cfg.societa.find(s => s.id === id);
+const vehById = id => S.cfg.veicoli.find(v => v.id === id);
+
+/* ---------------- UI di base ---------------- */
+let toastT;
+function toast(msg, err = false) {
+  let t = $('.toast'); if (!t) { t = document.createElement('div'); document.body.append(t); }
+  t.className = 'toast' + (err ? ' err' : ''); t.textContent = msg; clearTimeout(toastT);
+  toastT = setTimeout(() => t.remove(), err ? 6000 : 2800);
+}
+function busy(msg) {
+  let b = $('.busy');
+  if (!msg) { b && b.remove(); return; }
+  if (!b) { b = document.createElement('div'); b.className = 'busy'; document.body.append(b); }
+  b.innerHTML = `<div><span class="spin"></span><span>${esc(msg)}</span></div>`;
+}
+const modals = [];
+function openModal(html, {cls = '', onClose} = {}) {
+  const ov = document.createElement('div'); ov.className = 'overlay';
+  ov.innerHTML = `<div class="sheet ${cls}">${html}</div>`;
+  const m = {ov, sheet: ov.firstElementChild, onClose};
+  m.close = (force = false) => {
+    if (!force && m.onClose && m.onClose() === false) return;
+    ov.remove(); modals.splice(modals.indexOf(m), 1);
+    if (!modals.length) document.body.style.overflow = '';
+  };
+  ov.addEventListener('mousedown', e => { if (e.target === ov) m.close(); });
+  m.sheet.addEventListener('click', e => { if (e.target.closest('[data-act="close"]')) m.close(); });
+  document.body.append(ov); modals.push(m); document.body.style.overflow = 'hidden';
+  return m;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && modals.length && !$('.busy')) modals[modals.length - 1].close(); });
+function errMsg(e) { return e?.message || String(e); }
+async function guard(fn, label) {
+  try { return await fn(); }
+  catch (e) { console.error(e); busy(null); toast((label ? label + ': ' : '') + errMsg(e), true); }
+}
+function download(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+}
+const safeName = s => String(s || '').replace(/[\\/:*?"<>|#%{}~&]/g, ' ').replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '').slice(0, 80);
+const conflictErr = () => Object.assign(new Error('Il file è stato modificato da un altro dispositivo.'), {conflict: true});
+
+/* =========================================================
+   ARCHIVIO — interfaccia comune
+   readJSON(path) -> {data, etag}|null ; writeJSON(path, data, etag?) -> etag
+   putBlob(path, blob) ; getBlob(path) ; remove(path) ; rename(path, newName) ; list(dir)
+   ========================================================= */
+class LocalFS {
+  constructor() { this.kind = 'local'; }
+  db() {
+    if (!this._db) this._db = new Promise((res, rej) => {
+      const r = indexedDB.open('rimborsi-fs', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('f');
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+    return this._db;
+  }
+  async req(mode, fn) {
+    const db = await this.db();
+    return new Promise((res, rej) => { const r = fn(db.transaction('f', mode).objectStore('f')); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  }
+  _get(k) { return this.req('readonly', s => s.get(k)); }
+  _put(k, v) { return this.req('readwrite', s => s.put(v, k)); }
+  _del(k) { return this.req('readwrite', s => s.delete(k)); }
+  _keys() { return this.req('readonly', s => s.getAllKeys()); }
+  async readJSON(p) { const r = await this._get(p); if (!r) return null; return {data: JSON.parse(await r.blob.text()), etag: r.etag}; }
+  async writeJSON(p, data, etag) {
+    if (etag) { const cur = await this._get(p); if (cur && cur.etag !== etag) throw conflictErr(); }
+    const ne = uid(); await this._put(p, {blob: new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'}), etag: ne}); return ne;
+  }
+  async etagOf(p) { const r = await this._get(p); return r ? r.etag : null; }
+  async putBlob(p, blob) { await this._put(p, {blob, etag: uid()}); }
+  async getBlob(p) { const r = await this._get(p); if (!r) throw new Error('File non trovato: ' + p); return r.blob; }
+  async remove(p) { for (const k of await this._keys()) if (k === p || k.startsWith(p + '/')) await this._del(k); }
+  async rename(p, newName) {
+    const np = p.split('/').slice(0, -1).concat(newName).join('/');
+    for (const k of await this._keys()) if (k === p || k.startsWith(p + '/')) { const v = await this._get(k); await this._put(np + k.slice(p.length), v); await this._del(k); }
+    return np;
+  }
+  async list(dir) {
+    const pre = dir ? dir + '/' : ''; const out = new Map();
+    for (const k of await this._keys()) if (k.startsWith(pre)) { const rest = k.slice(pre.length); const seg = rest.split('/')[0]; out.set(seg, {name: seg, isFolder: rest.includes('/')}); }
+    return [...out.values()];
+  }
+  async wipe() { for (const k of await this._keys()) await this._del(k); }
+}
+
+/* --- autenticazione Microsoft (OAuth 2.0 + PKCE, senza librerie) --- */
+const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const redirectUri = () => location.origin + location.pathname.replace(/index\.html$/, '');
+const tok = { get: () => ls.get(TOK_KEY, null), set: v => ls.set(TOK_KEY, v), clear: () => ls.del(TOK_KEY) };
+async function msLogin() {
+  if (!dev.clientId) throw new Error('Inserisci prima il Client ID dell\'app Microsoft.');
+  const v = b64url(crypto.getRandomValues(new Uint8Array(48)));
+  const ch = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v))));
+  const st = uid() + uid(); ss.set('pkce', {v, st});
+  location.href = AUTH + '/authorize?' + new URLSearchParams({client_id: dev.clientId, response_type: 'code', redirect_uri: redirectUri(),
+    scope: SCOPES, code_challenge: ch, code_challenge_method: 'S256', state: st, response_mode: 'query', prompt: 'select_account'});
+}
+async function tokenRequest(params) {
+  const r = await fetch(AUTH + '/token', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: new URLSearchParams(Object.assign({client_id: dev.clientId, scope: SCOPES}, params))});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error_description?.split('\r\n')[0] || j.error || ('HTTP ' + r.status)), {auth: true});
+  const t = {access: j.access_token, refresh: j.refresh_token || tok.get()?.refresh, exp: Date.now() + (j.expires_in - 90) * 1000};
+  if (j.id_token) { try { const p = JSON.parse(atob(j.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); dev.account = p.preferred_username || p.email || p.name || ''; saveDev(); } catch {} }
+  tok.set(t); return t;
+}
+async function handleRedirect(qs) {
+  const pk = ss.get('pkce'); ss.del('pkce');
+  history.replaceState(null, '', redirectUri());
+  if (qs.get('error')) throw new Error('Accesso Microsoft non riuscito: ' + (qs.get('error_description') || qs.get('error')));
+  if (!pk || pk.st !== qs.get('state')) throw new Error('Risposta di accesso non valida: riprova ad accedere.');
+  await tokenRequest({grant_type: 'authorization_code', code: qs.get('code'), redirect_uri: redirectUri(), code_verifier: pk.v});
+  dev.mode = 'onedrive'; saveDev();
+}
+let refreshing = null;
+async function accessToken() {
+  const t = tok.get();
+  if (!t) throw Object.assign(new Error('Sessione Microsoft non attiva.'), {auth: true});
+  if (t.access && t.exp > Date.now()) return t.access;
+  if (!t.refresh) throw Object.assign(new Error('Sessione Microsoft scaduta.'), {auth: true});
+  refreshing ||= tokenRequest({grant_type: 'refresh_token', refresh_token: t.refresh}).finally(() => { refreshing = null; });
+  return (await refreshing).access;
+}
+async function gfetch(url, opt = {}, retry = true) {
+  const at = await accessToken();
+  const r = await fetch(url, Object.assign({}, opt, {headers: Object.assign({}, opt.headers, {Authorization: 'Bearer ' + at})}));
+  if (r.status === 401 && retry) { const t = tok.get(); if (t) { t.exp = 0; tok.set(t); } return gfetch(url, opt, false); }
+  if (r.status === 429 && retry) { await new Promise(s => setTimeout(s, (+r.headers.get('Retry-After') || 3) * 1000)); return gfetch(url, opt, false); }
+  return r;
+}
+async function gerr(r) { const j = await r.json().catch(() => ({})); return new Error('OneDrive: ' + (j.error?.message || ('HTTP ' + r.status))); }
+const encPath = p => p.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+
+class GraphFS {
+  constructor(root) { this.kind = 'onedrive'; this.root = root.replace(/^\/+|\/+$/g, ''); }
+  url(p, suffix = '') { return `${GRAPH}/me/drive/root:/${encPath(this.root + '/' + p)}:${suffix}`; }
+  async meta(p) { const r = await gfetch(this.url(p)); if (r.status === 404) return null; if (!r.ok) throw await gerr(r); return r.json(); }
+  async readJSON(p) {
+    const m = await this.meta(p); if (!m) return null;
+    const c = await fetch(m['@microsoft.graph.downloadUrl'], {cache: 'no-store'});
+    return {data: await c.json(), etag: m.eTag};
+  }
+  async etagOf(p) { const m = await this.meta(p); return m ? m.eTag : null; }
+  async mkdirp(dir) {
+    let parent = '';
+    for (const seg of (this.root + '/' + dir).split('/').filter(Boolean)) {
+      const base = parent ? `${GRAPH}/me/drive/root:/${encPath(parent)}:/children` : `${GRAPH}/me/drive/root/children`;
+      const r = await gfetch(base, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: seg, folder: {}, '@microsoft.graph.conflictBehavior': 'fail'})});
+      if (!r.ok && r.status !== 409) throw await gerr(r);
+      parent = parent ? parent + '/' + seg : seg;
+    }
+  }
+  async send(p, suffix, opt) {
+    let r = await gfetch(this.url(p, suffix), opt);
+    if (r.status === 404) { await this.mkdirp(p.split('/').slice(0, -1).join('/')); r = await gfetch(this.url(p, suffix), opt); }
+    return r;
+  }
+  async writeJSON(p, data, etag) {
+    const headers = {'Content-Type': 'application/json'}; if (etag) headers['If-Match'] = etag;
+    const r = await this.send(p, '/content', {method: 'PUT', headers, body: JSON.stringify(data, null, 2)});
+    if (r.status === 412) throw conflictErr(); if (!r.ok) throw await gerr(r);
+    return (await r.json()).eTag;
+  }
+  async putBlob(p, blob) {
+    if (blob.size <= 4 * 1024 * 1024) {
+      const r = await this.send(p, '/content', {method: 'PUT', headers: {'Content-Type': blob.type || 'application/octet-stream'}, body: blob});
+      if (!r.ok) throw await gerr(r); return;
+    }
+    const s = await this.send(p, '/createUploadSession', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({item: {'@microsoft.graph.conflictBehavior': 'replace'}})});
+    if (!s.ok) throw await gerr(s);
+    const {uploadUrl} = await s.json(); const CH = 320 * 1024 * 12;
+    for (let i = 0; i < blob.size; i += CH) {
+      const part = blob.slice(i, Math.min(i + CH, blob.size));
+      const r = await fetch(uploadUrl, {method: 'PUT', headers: {'Content-Range': `bytes ${i}-${i + part.size - 1}/${blob.size}`}, body: part});
+      if (!r.ok) throw new Error('Caricamento interrotto (' + r.status + ')');
+    }
+  }
+  async getBlob(p) { const m = await this.meta(p); if (!m) throw new Error('File non trovato: ' + p); return (await fetch(m['@microsoft.graph.downloadUrl'])).blob(); }
+  async remove(p) { const r = await gfetch(this.url(p), {method: 'DELETE'}); if (!r.ok && r.status !== 404) throw await gerr(r); }
+  async rename(p, newName) {
+    const r = await gfetch(this.url(p), {method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: newName})});
+    if (!r.ok) throw await gerr(r); return p.split('/').slice(0, -1).concat(newName).join('/');
+  }
+  async list(dir) {
+    let url = (dir ? this.url(dir, '/children') : `${GRAPH}/me/drive/root:/${encPath(this.root)}:/children`) + '?$select=name,folder,file&$top=200';
+    const out = [];
+    while (url) { const r = await gfetch(url); if (r.status === 404) return out; if (!r.ok) throw await gerr(r); const j = await r.json(); out.push(...j.value.map(x => ({name: x.name, isFolder: !!x.folder}))); url = j['@odata.nextLink']; }
+    return out;
+  }
+}
+async function odListFolders(path) {
+  const base = path ? `${GRAPH}/me/drive/root:/${encPath(path)}:/children` : `${GRAPH}/me/drive/root/children`;
+  const r = await gfetch(base + '?$select=name,folder&$top=500'); if (!r.ok) throw await gerr(r);
+  return (await r.json()).value.filter(x => x.folder).map(x => x.name).sort((a, b) => a.localeCompare(b, 'it'));
+}
+async function odCreateFolder(path, name) {
+  const base = path ? `${GRAPH}/me/drive/root:/${encPath(path)}:/children` : `${GRAPH}/me/drive/root/children`;
+  const r = await gfetch(base, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name, folder: {}, '@microsoft.graph.conflictBehavior': 'fail'})});
+  if (!r.ok) throw await gerr(r);
+}
+async function readPointer() {
+  const r = await gfetch(`${GRAPH}/me/drive/special/approot:/${POINTER_FILE}`); if (!r.ok) return null;
+  const m = await r.json(); return (await fetch(m['@microsoft.graph.downloadUrl'], {cache: 'no-store'})).json();
+}
+async function writePointer(obj) {
+  const r = await gfetch(`${GRAPH}/me/drive/special/approot:/${POINTER_FILE}:/content`, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(obj)});
+  if (!r.ok) throw await gerr(r);
+}
+
+/* ---------------- caricamento e salvataggio dati ---------------- */
+async function loadAll() {
+  const c = await fs.readJSON('config.json');
+  if (c) { S.cfg = Object.assign(defaultConfig(), c.data); S.cfg.parametri = Object.assign(defaultConfig().parametri, c.data.parametri); S.cfgEtag = c.etag; }
+  else { S.cfg = defaultConfig(); S.cfgEtag = await fs.writeJSON('config.json', S.cfg); }
+  const i = await fs.readJSON('indice.json');
+  if (i) { S.idx = Object.assign({pratiche: {}, invii: {}}, i.data); S.idxEtag = i.etag; }
+  else { S.idx = {schema: 1, pratiche: {}, invii: {}}; S.idxEtag = await fs.writeJSON('indice.json', S.idx); }
+  const p = await fs.readJSON('pagamenti.json');
+  if (p) { S.pag = Object.assign({pagamenti: []}, p.data); S.pagEtag = p.etag; }
+  else { S.pag = {schema: 1, pagamenti: []}; S.pagEtag = await fs.writeJSON('pagamenti.json', S.pag); }
+}
+async function updateJSON(path, key, mutate) {
+  for (let i = 0; i < 4; i++) {
+    mutate(S[key]);
+    try { S[key + 'Etag'] = await fs.writeJSON(path, S[key], S[key + 'Etag']); return; }
+    catch (e) {
+      if (!e.conflict) throw e;
+      const fresh = await fs.readJSON(path); S[key] = fresh.data; S[key + 'Etag'] = fresh.etag;
+    }
+  }
+  throw new Error('Impossibile salvare ' + path + ' (conflitti ripetuti)');
+}
+const updateIndex = m => updateJSON('indice.json', 'idx', m);
+const updatePag = m => updateJSON('pagamenti.json', 'pag', m);
+async function saveConfig(cfg) {
+  try { S.cfgEtag = await fs.writeJSON('config.json', cfg, S.cfgEtag); S.cfg = cfg; }
+  catch (e) {
+    if (!e.conflict) throw e;
+    const fresh = await fs.readJSON('config.json'); S.cfg = fresh.data; S.cfgEtag = fresh.etag;
+    throw new Error('Le impostazioni erano state modificate da un altro dispositivo: ho ricaricato la versione aggiornata, ripeti la modifica.');
+  }
+}
+async function rebuildIndex() {
+  const idx = {schema: 1, pratiche: {}, invii: {}};
+  for (const f of await fs.list('pratiche')) if (f.isFolder) {
+    const r = await fs.readJSON(`pratiche/${f.name}/pratica.json`).catch(() => null);
+    if (r?.data?.id) { r.data.folder = f.name; idx.pratiche[r.data.id] = r.data; }
+  }
+  for (const f of await fs.list('invii')) if (!f.isFolder && /^I\d+\.json$/.test(f.name)) {
+    const r = await fs.readJSON('invii/' + f.name).catch(() => null); if (r?.data?.id) idx.invii[r.data.id] = r.data;
+  }
+  S.idxEtag = await fs.writeJSON('indice.json', idx, S.idxEtag).catch(async e => { if (!e.conflict) throw e; return fs.writeJSON('indice.json', idx); });
+  S.idx = idx;
+}
+
+/* ---------------- calcoli ---------------- */
+function tariffaFor(veicoloId, anno) {
+  const v = vehById(veicoloId); const t = v?.tariffe?.find(x => +x.anno === +anno);
+  return t && t.euroKm !== '' && t.euroKm != null ? +t.euroKm : null;
+}
+function kmInfo(p) {
+  if (p.tipo !== 'trasferta' || !p.veicoloId || !(+p.km)) return {km: +p.km || 0, tariffa: null, importo: 0, missing: false};
+  const t = p.tariffaCongelata != null ? p.tariffaCongelata : tariffaFor(p.veicoloId, yearOf(p.data));
+  if (t == null) return {km: +p.km, tariffa: null, importo: 0, missing: true};
+  return {km: +p.km, tariffa: t, importo: r2(+p.km * t), missing: false};
+}
+function totals(p) {
+  const cols = {km: 0, telepass: 0, parcheggio: 0, vitto: 0, alloggio: 0, altro: 0}, grp = {T: 0, S: 0, R: 0};
+  const k = kmInfo(p); cols.km = k.importo; grp.T += k.importo;
+  let vittoAll = 0;
+  for (const s of p.spese || []) {
+    const c = catOf(s.categoria), v = r2(s.importo), g = gruppoOf(s);
+    cols[c.col] = r2(cols[c.col] + v); grp[g] = r2(grp[g] + v);
+    if (g === 'T' && c.tetto) vittoAll = r2(vittoAll + v);
+  }
+  const tot = r2(Object.values(cols).reduce((a, b) => a + b, 0));
+  let oltreTetto = 0;
+  if (p.tipo === 'trasferta' && vittoAll > 0) {
+    const tetto = (p.estero ? S.cfg.parametri.tettoEstero : S.cfg.parametri.tettoItalia) * daysBetween(p.data, p.dataFine);
+    oltreTetto = Math.max(0, r2(vittoAll - tetto));
+  }
+  return {cols, grp, tot, km: k, vittoAll, oltreTetto};
+}
+function checks(p, all = pratiche()) {
+  const out = [], soc = socById(p.societaId), t = totals(p);
+  const err = m => out.push({lvl: 'err', m}), warn = m => out.push({lvl: 'warn', m});
+  if (!p.data) err('Manca la data.');
+  if (!soc) err('Seleziona la società.');
+  if (!(p.motivo || '').trim()) err('Manca il motivo.');
+  if (p.tipo === 'trasferta' && !(p.controparte || '').trim()) err('Manca la controparte (chi hai incontrato / dove).');
+  if (soc?.attivaDal && p.data && p.data < soc.attivaDal) err(`${soc.nome} rimborsa solo dal ${fmtD(soc.attivaDal)}.`);
+  if (soc && !soc.attivaDal && soc.id === 'delos') warn(`${soc.nome}: data di inizio attività non impostata (Impostazioni → Società).`);
+  for (const s of p.spese || []) {
+    const c = catOf(s.categoria), g = gruppoOf(s), lab = `${c.label} ${fmtE(s.importo)} €`;
+    if (g === 'R' && (!(s.ospiti || '').trim() || !(s.motivoRappr || '').trim())) err(`${lab}: per la rappresentanza indica ospiti e motivo.`);
+    if (g === 'S' && s.fatturaIntestataA !== 'societa') warn(`${lab}: per un costo della società la fattura dovrebbe essere intestata a ${soc?.nome || 'la società'}.`);
+    if (c.tracc && g === 'T' && s.pagamento && !TRACCIABILI.has(s.pagamento)) warn(`${lab}: pagamento non tracciabile, il rimborso può diventare tassabile.`);
+    if (!(s.ricevute || []).length) warn(`${lab}: nessuna ricevuta allegata.`);
+    if (!(+s.importo > 0)) err(`${c.label}: importo mancante.`);
+  }
+  if (p.tipo === 'trasferta') {
+    if (p.kmStimati) warn('Km stimati dall\'AI: verificali.');
+    if (t.km.missing) err(`Manca la tariffa ACI ${yearOf(p.data)} per il veicolo (Impostazioni → Veicoli).`);
+    if (+p.km > 0 && !p.veicoloId) warn('Km indicati ma nessun veicolo selezionato: il rimborso km non viene calcolato.');
+    if (soc?.comuneSede && (p.luogo || '').toLowerCase().includes(soc.comuneSede.toLowerCase()) && t.vittoAll > 0)
+      warn(`Destinazione nel comune della sede (${soc.comuneSede}): vitto e alloggio lì non sono esenti.`);
+    if (t.oltreTetto > 0) warn(`Vitto e alloggio superano di ${fmtE(t.oltreTetto)} € il tetto deducibile per la società.`);
+    if (p.veicoloId && +p.km > 0) {
+      const dup = all.find(o => o.id !== p.id && o.tipo === 'trasferta' && o.veicoloId === p.veicoloId && o.data === p.data && +o.km > 0 && o.societaId !== p.societaId);
+      if (dup) warn(`Stesso giorno e stesso veicolo anche in ${dup.id} (${socById(dup.societaId)?.nome || ''}): controlla il doppio conteggio dei km.`);
+    }
+  }
+  return out;
+}
+
+/* ---------------- avvio ---------------- */
+async function boot() {
+  try {
+    const qs = new URLSearchParams(location.search);
+    if (qs.get('code') || qs.get('error')) { busy('Accesso a Microsoft…'); await handleRedirect(qs); busy(null); }
+    if (!dev.mode) return showWelcome();
+    if (dev.mode === 'local') { fs = new LocalFS(); await loadAll(); return renderApp(); }
+    if (!tok.get()) return showWelcome('Accedi di nuovo a OneDrive per continuare.');
+    busy('Collegamento a OneDrive…');
+    if (!dev.root) {
+      const ptr = await readPointer().catch(() => null);
+      if (ptr?.root) { dev.root = ptr.root; saveDev(); }
+      else { busy(null); return pickFolder(true); }
+    }
+    fs = new GraphFS(dev.root); await loadAll(); busy(null); renderApp();
+  } catch (e) {
+    busy(null); console.error(e);
+    if (e.auth) { tok.clear(); return showWelcome('La sessione Microsoft è scaduta o non valida: accedi di nuovo. (' + errMsg(e) + ')'); }
+    $('#app').innerHTML = `<div class="welcome"><h1>Qualcosa non va</h1><p class="banner info">${esc(errMsg(e))}</p>
+      <p><button class="btn primary" onclick="location.reload()">Riprova</button> <button class="btn" id="resetDev">Torna alla schermata iniziale</button></p></div>`;
+    $('#resetDev').onclick = () => { dev.mode = null; saveDev(); location.reload(); };
+  }
+}
+
+function showWelcome(msg) {
+  $('#topbar').classList.add('hidden');
+  $('#app').innerHTML = `<div class="welcome">
     <h1>Rimborsi trasferte</h1>
-    <p>Pagina segnaposto: l'app arriva a breve.</p>
-  </main>
+    <p class="muted">Trasferte, spese e rimborsi verso le tue società. I dati restano nel tuo OneDrive personale, una cartella per ogni pratica.</p>
+    ${msg ? `<div class="banner info">${esc(msg)}</div>` : ''}
+    <div class="wgrid">
+      <div class="card">
+        <h3>Collega OneDrive</h3>
+        <div class="fgrid">
+          <label class="fld s12"><span>Application (client) ID</span><input id="wClient" value="${esc(dev.clientId)}" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off"></label>
+          <label class="fld s12"><span>Chiave API Anthropic (facoltativa, anche dopo)</span><input id="wKey" type="password" value="${esc(dev.apiKey)}" placeholder="sk-ant-…" autocomplete="off"></label>
+        </div>
+        <p class="small muted">Indirizzo di reindirizzamento da registrare su Azure:<br><code>${esc(redirectUri())}</code></p>
+        <button class="btn primary" id="wLogin">Accedi con Microsoft</button>
+      </div>
+      <div class="card">
+        <h3>Prova in locale</h3>
+        <p class="small muted">I dati restano solo in questo browser. Utile per provare l'app con dati dimostrativi; potrai collegare OneDrive in seguito da Impostazioni.</p>
+        <button class="btn" id="wLocal">Usa in locale con dati demo</button>
+      </div>
+    </div>
+    <p class="small muted" style="margin-top:24px">Versione ${APP_VERSION}</p>
+  </div>`;
+  $('#wLogin').onclick = () => guard(async () => {
+    dev.clientId = $('#wClient').value.trim(); dev.apiKey = $('#wKey').value.trim(); saveDev(); await msLogin();
+  });
+  $('#wLocal').onclick = () => guard(async () => {
+    dev.mode = 'local'; dev.apiKey = $('#wKey').value.trim() || dev.apiKey; saveDev();
+    fs = new LocalFS(); await loadAll();
+    if (!pratiche().length) await loadDemo();
+    renderApp();
+  });
+}
+
+/* ---------------- scelta cartella OneDrive ---------------- */
+function pickFolder(first = false) {
+  let path = dev.root || '';
+  const m = openModal(`<div class="sheet-head"><div><div class="eyebrow">OneDrive</div><h2>Scegli la cartella dell'archivio</h2></div>${first ? '' : '<button class="icon-btn" data-act="close">' + ICON.x + '</button>'}</div>
+    <div class="sheet-body"><p class="small muted">Dentro questa cartella l'app crea <code>pratiche/</code>, <code>invii/</code> e i file di configurazione. Scegli una cartella dedicata, per esempio <i>Delos/Rimborsi trasferte</i>.</p>
+    <div class="crumbs" id="fCrumbs"></div><div class="folderlist" id="fList"><div class="empty"><span class="spin"></span></div></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><input id="fNew" placeholder="Nuova cartella qui…" style="flex:1;border:1px solid var(--line-2);border-radius:8px;padding:7px 9px;background:var(--surface)"><button class="btn" id="fCreate">Crea</button></div></div>
+    <div class="sheet-foot"><span class="small muted" id="fCur"></span><span class="spacer"></span><button class="btn primary" id="fUse">Usa questa cartella</button></div>`,
+    {onClose: () => !first});
+  const draw = async () => {
+    const segs = path ? path.split('/') : [];
+    $('#fCrumbs', m.sheet).innerHTML = `<button data-p="">OneDrive</button>` + segs.map((s, i) => ` / <button data-p="${esc(segs.slice(0, i + 1).join('/'))}">${esc(s)}</button>`).join('');
+    $('#fCur', m.sheet).textContent = 'Selezionata: /' + path;
+    $('#fUse', m.sheet).disabled = !path;
+    const list = $('#fList', m.sheet); list.innerHTML = '<div class="empty"><span class="spin"></span></div>';
+    try {
+      const fl = await odListFolders(path);
+      list.innerHTML = fl.length ? fl.map(n => `<button data-p="${esc((path ? path + '/' : '') + n)}">${ICON.folder}${esc(n)}</button>`).join('') : '<div class="empty small">Nessuna sottocartella</div>';
+    } catch (e) { list.innerHTML = `<div class="empty small">${esc(errMsg(e))}</div>`; }
+  };
+  m.sheet.addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) { path = b.dataset.p; draw(); } });
+  $('#fCreate', m.sheet).onclick = () => guard(async () => {
+    const n = safeName($('#fNew', m.sheet).value); if (!n) return;
+    await odCreateFolder(path, n); path = (path ? path + '/' : '') + n; $('#fNew', m.sheet).value = ''; draw();
+  });
+  $('#fUse', m.sheet).onclick = () => guard(async () => {
+    busy('Preparo l\'archivio…');
+    dev.root = path; saveDev(); await writePointer({root: path, aggiornato: new Date().toISOString()}).catch(() => {});
+    fs = new GraphFS(path); await loadAll(); busy(null); m.close(true); renderApp(); toast('Archivio collegato: /' + path);
+  });
+  draw();
+}
+
+/* =========================================================
+   VISTA PRINCIPALE
+   ========================================================= */
+function renderApp() {
+  $('#topbar').classList.remove('hidden');
+  $('#storePill').innerHTML = fs.kind === 'onedrive'
+    ? `<span class="dot"></span><span class="lbl">OneDrive · /${esc(dev.root)}</span>`
+    : `<span class="dot local"></span><span class="lbl">Locale (solo questo browser)</span>`;
+  $('#app').innerHTML = `<section class="kpis" id="kpis"></section>
+    <div class="filters" id="filters"></div>
+    <div class="tablewrap"><table class="grid" id="grid"></table></div>`;
+  renderKPIs(); renderFilters(); renderTable();
+}
+function socStats() {
+  const st = {};
+  for (const s of S.cfg.societa) st[s.id] = {mat: 0, grp: {T: 0, S: 0, R: 0}, inviato: 0, bozze: 0, nBozze: 0, incassato: 0};
+  for (const p of pratiche()) {
+    const x = st[p.societaId]; if (!x) continue; const t = totals(p);
+    x.mat = r2(x.mat + t.tot); for (const g in t.grp) x.grp[g] = r2(x.grp[g] + t.grp[g]);
+    if (p.stato === 'inviata') x.inviato = r2(x.inviato + t.tot); else { x.bozze = r2(x.bozze + t.tot); x.nBozze++; }
+  }
+  for (const pg of S.pag.pagamenti) if (st[pg.societaId]) st[pg.societaId].incassato = r2(st[pg.societaId].incassato + (+pg.importo || 0));
+  return st;
+}
+function renderKPIs() {
+  const st = socStats();
+  $('#kpis').innerHTML = S.cfg.societa.map(s => {
+    const x = st[s.id], res = r2(x.inviato - x.incassato);
+    return `<div class="kpi" style="--c:${esc(s.colore || 'var(--accent)')}">
+      <div class="kpi-head"><span class="kpi-name">${esc(s.nome)}</span><button class="btn sm" data-act="add-pag" data-soc="${esc(s.id)}">+ Incasso</button></div>
+      <div class="kpi-big">${fmtE(x.mat)} €<small>maturato</small></div>
+      <div class="kpi-groups">${Object.entries(GROUPS).map(([g, l]) => `<span>${l} <b>${fmtE(x.grp[g])}</b></span>`).join('')}</div>
+      <div class="kpi-row">
+        <div><span>Inviato</span><b>${fmtE(x.inviato)}</b></div>
+        <div><span>Incassato</span><b>${fmtE(x.incassato)}</b></div>
+        <div><span>Residuo</span><b class="${res > 0.004 ? 'res-pos' : 'res-zero'}">${fmtE(res)}</b></div>
+      </div>
+      <div class="kpi-foot">${x.nBozze ? `Da inviare: <b>${fmtE(x.bozze)} €</b> in ${x.nBozze} ${x.nBozze === 1 ? 'pratica' : 'pratiche'}` : 'Nessuna bozza da inviare'}</div>
+    </div>`;
+  }).join('');
+}
+function renderFilters() {
+  const years = [...new Set(pratiche().map(p => yearOf(p.data)).concat(yearOf()))].sort((a, b) => b - a);
+  const mesi = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+  const f = S.f;
+  $('#filters').innerHTML = `
+    <select data-flt="anno"><option value="">Tutti gli anni</option>${years.map(y => `<option ${f.anno == y ? 'selected' : ''}>${y}</option>`).join('')}</select>
+    <select data-flt="mese"><option value="">Tutti i mesi</option>${mesi.map((m, i) => `<option value="${i + 1}" ${f.mese == i + 1 ? 'selected' : ''}>${m}</option>`).join('')}</select>
+    <select data-flt="soc"><option value="">Tutte le società</option>${S.cfg.societa.map(s => `<option value="${esc(s.id)}" ${f.soc === s.id ? 'selected' : ''}>${esc(s.nome)}</option>`).join('')}</select>
+    <select data-flt="stato"><option value="">Tutti gli stati</option><option value="bozza" ${f.stato === 'bozza' ? 'selected' : ''}>Bozza</option><option value="inviata" ${f.stato === 'inviata' ? 'selected' : ''}>Inviata</option></select>
+    <input type="search" data-flt="q" placeholder="Cerca luogo, motivo, controparte…" value="${esc(f.q)}">`;
+}
+function filtered() {
+  const f = S.f, q = f.q.trim().toLowerCase();
+  return pratiche().filter(p =>
+    (!f.anno || yearOf(p.data) == f.anno) && (!f.mese || +p.data.slice(5, 7) == f.mese) &&
+    (!f.soc || p.societaId === f.soc) && (!f.stato || p.stato === f.stato) &&
+    (!q || [p.id, p.luogo, p.percorso, p.motivo, p.controparte, p.deal, ...(p.spese || []).map(s => s.descrizione)].join(' ').toLowerCase().includes(q))
+  ).sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
+}
+function renderTable() {
+  const list = filtered(), all = pratiche();
+  if (!all.length) { $('#grid').innerHTML = `<tbody><tr><td class="empty">Nessuna pratica ancora. Crea la prima con <b>Nuova pratica</b>.</td></tr></tbody>`; return; }
+  const sum = {km: 0, telepass: 0, parcheggio: 0, vitto: 0, alloggio: 0, altro: 0, tot: 0, kmN: 0};
+  const rows = list.map(p => {
+    const t = totals(p), soc = socById(p.societaId), ck = checks(p, all);
+    for (const k in t.cols) sum[k] = r2(sum[k] + t.cols[k]); sum.tot = r2(sum.tot + t.tot); sum.kmN += +p.km || 0;
+    const nErr = ck.filter(c => c.lvl === 'err').length, nW = ck.length - nErr;
+    const badge = ck.length ? `<span class="warnbadge ${nErr ? 'err' : ''}" title="${esc(ck.map(c => c.m).join('\n'))}">${ICON.warn}${ck.length}</span>` : '';
+    const sub = [p.motivo, p.controparte].filter(Boolean).join(' · ');
+    const date = p.dataFine && p.dataFine !== p.data ? `${fmtD(p.data)}<span class="kmsub">→ ${fmtD(p.dataFine)}</span>` : fmtD(p.data);
+    const cell = (k) => `<td class="num c-cat ${t.cols[k] ? '' : 'zero'}">${t.cols[k] ? fmtE(t.cols[k]) : '—'}${k === 'km' && +p.km ? `<span class="kmsub">${fmtK(p.km)} km</span>` : ''}</td>`;
+    const chip = `<span class="chip" style="--c:${esc(soc?.colore || '#999')}"><i></i>${esc(soc?.nome || '—')}</span>`;
+    const pill = `<span class="pill st-${p.stato}">${p.stato === 'inviata' ? 'Inviata' : 'Bozza'}</span>`;
+    return `<tr data-id="${esc(p.id)}">
+      <td class="c-ic"><span class="typeic" title="${p.tipo === 'trasferta' ? 'Trasferta' : 'Spesa singola'}">${p.tipo === 'trasferta' ? ICON.car : ICON.rec}</span></td>
+      <td class="c-date">${date}</td>
+      <td class="c-title"><div class="t-title">${esc(p.luogo || '(senza titolo)')}</div><div class="t-sub">${esc(sub)}</div></td>
+      <td class="c-soc-d">${chip}</td>
+      ${COLS.map(([k]) => cell(k)).join('')}
+      <td class="num c-tot"><b>${fmtE(t.tot)}</b></td>
+      <td class="c-soc-d">${pill}</td>
+      <td class="c-soc-d">${badge}</td>
+      <td class="c-meta">${chip}${pill}${badge}</td>
+    </tr>`;
+  }).join('');
+  $('#grid').innerHTML = `<thead><tr><th></th><th>Data</th><th>Luogo / descrizione</th><th>Società</th>${COLS.map(([, l]) => `<th class="num">${l}</th>`).join('')}<th class="num">Totale</th><th>Stato</th><th></th><th class="c-meta"></th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="14" class="empty">Nessuna pratica con questi filtri.</td></tr>`}</tbody>
+    <tfoot><tr><td></td><td colspan="3">${list.length} ${list.length === 1 ? 'pratica' : 'pratiche'}</td>${COLS.map(([k]) => `<td class="num">${fmtE(sum[k])}${k === 'km' ? `<span class="kmsub">${fmtK(sum.kmN)} km</span>` : ''}</td>`).join('')}<td class="num">${fmtE(sum.tot)}</td><td colspan="3"></td></tr></tfoot>`;
+}
+function refreshMain() { if (!$('#kpis')) return; renderKPIs(); renderFilters(); renderTable(); }
+
+document.addEventListener('input', e => {
+  const t = e.target.closest('[data-flt]'); if (!t) return;
+  S.f[t.dataset.flt] = t.value; ls.set(FILT_KEY, S.f); renderTable();
+});
+document.addEventListener('click', e => {
+  if (modals.length && e.target.closest('.overlay')) return;
+  const a = e.target.closest('[data-act]');
+  if (a) {
+    const act = a.dataset.act;
+    if (act === 'new') return openNew();
+    if (act === 'settings') return openSettings();
+    if (act === 'export') return openExport();
+    if (act === 'add-pag') return openPagamento(a.dataset.soc);
+    if (act === 'reload') return guard(async () => { busy('Aggiorno…'); await loadAll(); busy(null); refreshMain(); toast('Dati aggiornati'); });
+  }
+  const tr = e.target.closest('#grid tbody tr[data-id]');
+  if (tr) openPratica(tr.dataset.id);
+});
+
+/* =========================================================
+   FILE: preparazione, nomi, visualizzazione
+   ========================================================= */
+async function prepFile(file) {
+  const type = file.type || '';
+  if (type.startsWith('image/')) {
+    try {
+      const bmp = await createImageBitmap(file);
+      const max = 1800, sc = Math.min(1, max / Math.max(bmp.width, bmp.height));
+      const c = document.createElement('canvas'); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+      const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0, c.width, c.height);
+      const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.82));
+      if (blob) return {blob, ext: '.jpg', orig: file.name};
+    } catch {}
+  }
+  const ext = (file.name.match(/\.[a-z0-9]{2,5}$/i)?.[0] || (type === 'application/pdf' ? '.pdf' : '')).toLowerCase();
+  return {blob: file, ext, orig: file.name};
+}
+function usedNames(d) { const s = new Set(d.allegati || []); for (const x of d.spese || []) for (const n of x.ricevute || []) s.add(n); return s; }
+function uniqueName(d, base, ext, extra = new Set()) {
+  const used = usedNames(d); let n = safeName(base) + ext, i = 2;
+  while (used.has(n) || extra.has(n)) n = `${safeName(base)} (${i++})${ext}`;
+  return n;
+}
+function spesaFileBase(s) { return `${s.data || 'senza data'} ${catOf(s.categoria).short} ${fmtE(s.importo)}`; }
+async function openFile(ed, name) {
+  const w = window.open('', '_blank');
+  try {
+    const blob = ed.pending.get(name) || await fs.getBlob(`pratiche/${ed.d.folder}/${name}`);
+    const url = URL.createObjectURL(blob);
+    if (w) w.location = url; else download(blob, name);
+  } catch (e) { w && w.close(); toast(errMsg(e), true); }
+}
+const blobToB64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+const isPdf = (blob, name = '') => blob.type === 'application/pdf' || /\.pdf$/i.test(name);
+const isImg = (blob, name = '') => /^image\/(jpeg|png|gif|webp)$/.test(blob.type) || /\.(jpe?g|png|gif|webp)$/i.test(name);
+
+/* =========================================================
+   AI (Anthropic Messages API direttamente dal browser)
+   ========================================================= */
+async function fileBlock(blob, name) {
+  const data = await blobToB64(blob);
+  if (isPdf(blob, name)) return {type: 'document', source: {type: 'base64', media_type: 'application/pdf', data}};
+  if (isImg(blob, name)) { const mt = blob.type && blob.type.startsWith('image/') ? blob.type : (/\.png$/i.test(name) ? 'image/png' : 'image/jpeg'); return {type: 'image', source: {type: 'base64', media_type: mt, data}}; }
+  return null;
+}
+async function claude(content, system, maxTokens = 4096) {
+  if (!dev.apiKey) throw new Error('Chiave Anthropic non impostata (Impostazioni → Generale).');
+  let r;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST', headers: {'content-type': 'application/json', 'x-api-key': dev.apiKey,
+      'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'},
+      body: JSON.stringify({model: dev.model || DEFAULT_MODEL, max_tokens: maxTokens, system, messages: [{role: 'user', content}]})});
+  } catch { throw new Error('AI non raggiungibile: controlla la connessione.'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error('AI: ' + (j.error?.message || ('HTTP ' + r.status)));
+  const txt = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+  const m = txt.match(/```(?:json)?\s*([\s\S]*?)```/); const s = m ? m[1] : txt;
+  const a = s.indexOf('{'), b = s.lastIndexOf('}');
+  if (a < 0 || b < a) throw new Error('Risposta AI non interpretabile.');
+  return JSON.parse(s.slice(a, b + 1));
+}
+const catGuide = () => CATS.map(c => `- ${c.id}: ${c.label} (${GROUPS[c.g]})`).join('\n');
+const AI_SYSTEM = `Sei l'assistente di una nota spese italiana. Estrai dati da ricevute, fatture, estratti Telepass e dal testo dell'utente.
+Regole: usa i documenti come fonte primaria; non inventare spese che non risultano dai documenti o dal testo; date in formato YYYY-MM-DD; importi come numeri con il punto decimale (IVA inclusa).
+Categorie: "vitto" è un pasto durante una trasferta; un pranzo o una cena con ospiti di lavoro (investitori, clienti, fornitori, advisor) è "rappr_pasto". Conferenze, corsi, software e abbonamenti sono costi della società.
+Rispondi solo con un oggetto JSON valido, senza testo prima o dopo.`;
+
+async function aiReadReceipt(blob, name, ctx) {
+  const block = await fileBlock(blob, name); if (!block) throw new Error('Formato del file non leggibile dall\'AI.');
+  const socs = S.cfg.societa.map(s => s.nome).join(', ');
+  return claude([block, {type: 'text', text:
+`Estrai i dati di questo documento di spesa.
+Contesto: pratica di tipo "${ctx.tipo}" del ${ctx.data}${ctx.luogo ? ' (' + ctx.luogo + ')' : ''}.
+Categorie ammesse:
+${catGuide()}
+Restituisci:
+{"data":"YYYY-MM-DD"|null,"categoria":"<id categoria>","importo":number|null,"pagamento":"carta"|"bancomat"|"bonifico"|"telepass"|"contanti"|null,"descrizione":"breve: esercente e cosa","fatturaIntestataA":"societa"|"me"|"scontrino","imponibile":number|null,"iva":number|null}
+fatturaIntestataA: "societa" se è una fattura intestata a una di queste società: ${socs}; "me" se è intestata a una persona fisica; "scontrino" se è uno scontrino o una ricevuta senza intestatario.
+Se il documento contiene più transiti o voci (es. estratto Telepass) somma solo quelli della data ${ctx.data}${ctx.dataFine ? ' fino al ' + ctx.dataFine : ''} e indicalo in descrizione.`}], AI_SYSTEM, 1200);
+}
+
+async function aiCompilePratica(files, text) {
+  const blocks = [];
+  for (const [i, f] of files.entries()) {
+    const b = await fileBlock(f.blob, f.orig);
+    if (b) { blocks.push({type: 'text', text: `Documento ${i}: ${f.orig}`}); blocks.push(b); }
+  }
+  const ctx = {
+    oggi: today(), richiedente: S.cfg.richiedente,
+    societa: S.cfg.societa.map(s => ({id: s.id, nome: s.nome, comuneSede: s.comuneSede || undefined})),
+    veicoli: S.cfg.veicoli.map(v => ({id: v.id, nome: v.nome})),
+    tratteFrequenti_kmSolaAndata: S.cfg.tratte.map(t => ({da: t.da, a: t.a, km: +t.km})),
+    ultimaSocieta: ls.get(LAST_KEY, {}).societaId || S.cfg.societa[0]?.id
+  };
+  blocks.push({type: 'text', text:
+`Compila una pratica di nota spese a partire dai documenti allegati (indice 0..${files.length - 1}) e da questa descrizione dell'utente:
+"""${text || '(nessuna descrizione)'}"""
+
+Contesto: ${JSON.stringify(ctx)}
+Categorie spesa ammesse:
+${catGuide()}
+
+Restituisci questo JSON:
+{
+ "tipo":"trasferta"|"spesa",            // "spesa" se non c'è un viaggio (es. solo biglietto conferenza o cena in città)
+ "data":"YYYY-MM-DD","dataFine":"YYYY-MM-DD"|null,
+ "societaId":"<id>",                     // dal testo; se assente usa ultimaSocieta
+ "luogo":"destinazione principale o descrizione breve",
+ "percorso":"es. Casa → Roma → Firenze → Casa"|null,
+ "veicoloId":"<id>"|null,                // solo se viaggio con auto propria
+ "km":number|null,                        // km TOTALI percorsi con l'auto (andata e ritorno inclusi)
+ "ar":true|false,
+ "estero":true|false,
+ "motivo":"", "controparte":"", "deal":"",
+ "fonti":{"<campo>":"documento"|"testo"|"stima"},   // per ogni campo compilato
+ "spese":[{"data":"YYYY-MM-DD","categoria":"<id>","importo":number,"pagamento":"carta"|"bancomat"|"bonifico"|"telepass"|"contanti"|null,
+   "descrizione":"breve","fatturaIntestataA":"societa"|"me"|"scontrino","imponibile":number|null,"iva":number|null,
+   "ospiti":""|null,"motivoRappr":""|null,"documenti":[indici dei documenti da cui deriva],"fonti":{"<campo>":"documento"|"testo"|"stima"}}],
+ "nota":"dubbi o cose da verificare, in una o due frasi"|null
+}
+Km: per i tratti presenti in tratteFrequenti usa quei km (sono di sola andata); altrimenti stima la distanza stradale e indica "stima" in fonti.km.
+Telepass: includi solo i transiti nelle date della pratica e coerenti col percorso, una spesa "pedaggio" per giorno con la somma dei transiti.
+Non creare spese per voci che non risultano né dai documenti né dal testo.`});
+  return claude(blocks, AI_SYSTEM, 6000);
+}
+function fonteCls(f) { return f === 'stima' ? 'stima' : 'doc'; }
+function draftFromAI(res, files) {
+  const tipo = res.tipo === 'spesa' ? 'spesa' : 'trasferta';
+  const d = newPratica(tipo); d._ai = {}; d._aiNota = res.nota || '';
+  const set = (k, v) => { if (v === null || v === undefined || v === '') return; d[k] = v; d._ai[k] = fonteCls(res.fonti?.[k]); };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(res.data || '')) set('data', res.data);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(res.dataFine || '') && res.dataFine !== res.data) set('dataFine', res.dataFine);
+  if (socById(res.societaId)) set('societaId', res.societaId);
+  ['luogo', 'percorso', 'motivo', 'controparte', 'deal'].forEach(k => set(k, typeof res[k] === 'string' ? res[k].trim() : null));
+  if (tipo === 'trasferta') {
+    if (vehById(res.veicoloId)) set('veicoloId', res.veicoloId); else if (res.veicoloId === null) d.veicoloId = '';
+    if (+res.km > 0) { set('km', Math.round(+res.km)); if (res.fonti?.km === 'stima') d.kmStimati = true; }
+    d.ar = res.ar !== false; d.estero = !!res.estero;
+  }
+  const pending = new Map(), usedIdx = new Set(), nameOfIdx = {};
+  d.spese = (res.spese || []).filter(s => +s.importo > 0).map(x => {
+    const s = newSpesa(d); s._ai = {};
+    const sset = (k, v) => { if (v === null || v === undefined || v === '') return; s[k] = v; s._ai[k] = fonteCls(x.fonti?.[k]); };
+    if (/^\d{4}-\d{2}-\d{2}$/.test(x.data || '')) sset('data', x.data);
+    sset('categoria', CAT[x.categoria] ? x.categoria : (tipo === 'trasferta' ? 'altro_trasf' : 'altro_soc'));
+    sset('importo', r2(x.importo));
+    if (PAGAMENTI[x.pagamento]) sset('pagamento', x.pagamento);
+    sset('descrizione', x.descrizione);
+    if (INTESTAZIONI[x.fatturaIntestataA]) sset('fatturaIntestataA', x.fatturaIntestataA);
+    if (+x.imponibile) sset('imponibile', r2(x.imponibile)); if (+x.iva) sset('iva', r2(x.iva));
+    sset('ospiti', x.ospiti); sset('motivoRappr', x.motivoRappr);
+    const idxs = [].concat(x.documenti ?? x.fileIndex ?? []).map(Number).filter(i => files[i]);
+    for (const i of idxs) {
+      if (!nameOfIdx[i]) { nameOfIdx[i] = uniqueName(d, spesaFileBase(s), files[i].ext, new Set(pending.keys())); pending.set(nameOfIdx[i], files[i].blob); }
+      if (!s.ricevute.includes(nameOfIdx[i])) s.ricevute.push(nameOfIdx[i]); usedIdx.add(i);
+    }
+    return s;
+  });
+  files.forEach((f, i) => { if (!usedIdx.has(i)) { const n = uniqueName(d, f.orig.replace(/\.[^.]+$/, ''), f.ext, new Set(pending.keys())); pending.set(n, f.blob); d.allegati.push(n); } });
+  return {d, pending};
+}
+
+/* =========================================================
+   NUOVA PRATICA
+   ========================================================= */
+function newPratica(tipo) {
+  const last = ls.get(LAST_KEY, {});
+  return {id: null, tipo, stato: 'bozza', data: today(), dataFine: '', societaId: socById(last.societaId) ? last.societaId : (S.cfg.societa[0]?.id || ''),
+    luogo: '', percorso: '', veicoloId: tipo === 'trasferta' ? (vehById(last.veicoloId) ? last.veicoloId : (S.cfg.veicoli[0]?.id || '')) : '',
+    km: 0, ar: true, estero: false, kmStimati: false, trattaId: '', motivo: '', controparte: '', deal: '', note: '', spese: [], allegati: []};
+}
+function newSpesa(d) {
+  return {id: uid(), data: d.data, categoria: d.tipo === 'trasferta' ? 'vitto' : 'conferenza', gruppo: '', importo: 0, pagamento: 'carta',
+    descrizione: '', fatturaIntestataA: 'scontrino', imponibile: null, iva: null, ospiti: '', motivoRappr: '', ricevute: []};
+}
+function openNew() {
+  let mode = dev.apiKey ? 'ai' : 'trasferta'; const files = [];
+  const m = openModal(`<div class="sheet-head"><div><div class="eyebrow">Nuova pratica</div><h2>Come vuoi compilarla?</h2></div><button class="icon-btn" data-act="close">${ICON.x}</button></div>
+    <div class="sheet-body">
+      <div class="choice">
+        <button data-mode="ai"><b>${ICON.spark} Automatica con AI</b><span>Carica ricevute e descrivi il viaggio</span></button>
+        <button data-mode="trasferta"><b>${ICON.car} Trasferta manuale</b><span>Viaggio con percorso, auto e spese</span></button>
+        <button data-mode="spesa"><b>${ICON.rec} Spesa singola</b><span>Conferenza, cena di rappresentanza, software…</span></button>
+      </div>
+      <div id="nAI"></div>
+    </div>
+    <div class="sheet-foot"><span class="small muted" id="nMsg"></span><span class="spacer"></span><button class="btn" data-act="close">Annulla</button><button class="btn primary" id="nGo">Continua</button></div>`);
+  const draw = () => {
+    $$('.choice button', m.sheet).forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+    const box = $('#nAI', m.sheet);
+    if (mode !== 'ai') { box.innerHTML = ''; $('#nGo', m.sheet).textContent = 'Continua'; return; }
+    $('#nGo', m.sheet).textContent = 'Compila con AI';
+    if (!dev.apiKey) { box.innerHTML = `<div class="banner info">Per la compilazione automatica serve la chiave API Anthropic: inseriscila in <b>Impostazioni → Generale</b>.</div>`; return; }
+    box.innerHTML = `<label class="drop" id="nDrop">${ICON.doc} Trascina qui ricevute, fatture, estratto Telepass (foto o PDF) oppure <u>sfoglia</u>
+        <input type="file" multiple accept="image/*,application/pdf" hidden id="nFiles"></label>
+      <div class="files" id="nList">${files.map((f, i) => `<span class="doclink">${ICON.doc}${esc(f.orig)}<button class="icon-btn" style="width:20px;height:20px" data-rm="${i}">${ICON.x}</button></span>`).join('')}</div>
+      <label class="fld s12" style="margin-top:12px"><span>Descrivi la pratica</span><textarea id="nText" rows="4" placeholder="Es. viaggio da casa a Roma e poi Firenze, A/R con la Cayenne, partenza il 5 novembre e ritorno il 6, pernottamento in albergo e cena. Incontro con Gobbi per il deal Gobbi, società Delos.">${esc(m.text || '')}</textarea></label>
+      <p class="small muted">L'AI prepara una bozza da rivedere: nulla viene salvato finché non confermi.</p>`;
+    const inp = $('#nFiles', m.sheet), drop = $('#nDrop', m.sheet);
+    const add = async list => { for (const f of list) files.push(await prepFile(f)); m.text = $('#nText', m.sheet).value; draw(); };
+    inp.onchange = () => add([...inp.files]);
+    drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+    drop.ondragleave = () => drop.classList.remove('over');
+    drop.ondrop = e => { e.preventDefault(); add([...e.dataTransfer.files]); };
+    $$('[data-rm]', m.sheet).forEach(b => b.onclick = e => { e.preventDefault(); files.splice(+b.dataset.rm, 1); m.text = $('#nText', m.sheet).value; draw(); });
+  };
+  m.sheet.addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) { if ($('#nText', m.sheet)) m.text = $('#nText', m.sheet).value; mode = b.dataset.mode; draw(); } });
+  $('#nGo', m.sheet).onclick = async () => {
+    if (mode !== 'ai') { m.close(true); return openEditor(newPratica(mode), {isNew: true}); }
+    if (!dev.apiKey) return;
+    const text = $('#nText', m.sheet).value.trim();
+    if (!files.length && !text) return toast('Carica almeno un documento o scrivi una descrizione.', true);
+    const btn = $('#nGo', m.sheet); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Lettura in corso…';
+    try {
+      const res = await aiCompilePratica(files, text);
+      const {d, pending} = draftFromAI(res, files);
+      m.close(true); openEditor(d, {isNew: true, pending, dirty: true});
+    } catch (e) { btn.disabled = false; btn.textContent = 'Compila con AI'; toast(errMsg(e), true); }
+  };
+  draw();
+}
+
+/* =========================================================
+   SCHEDA PRATICA (editor)
+   ========================================================= */
+async function openPratica(id) {
+  const p = S.idx.pratiche[id]; if (!p) return;
+  await guard(async () => {
+    busy('Apro la pratica…');
+    const r = await fs.readJSON(`pratiche/${p.folder}/pratica.json`);
+    busy(null);
+    if (!r) { toast('Cartella della pratica non trovata: uso la copia dell\'indice. Valuta "Ricostruisci indice".', true); return openEditor(clone(p), {}); }
+    r.data.folder = p.folder;
+    if (r.data.updatedAt !== p.updatedAt) updateIndex(idx => { idx.pratiche[id] = r.data; }).then(refreshMain).catch(() => {});
+    openEditor(r.data, {etag: r.etag});
+  });
+}
+function openEditor(p, opts = {}) {
+  const ed = {d: clone(p), pending: new Map(opts.pending || []), removed: new Set(), etag: opts.etag || null, isNew: !!opts.isNew, dirty: !!opts.dirty, editing: null, salvaTratta: false};
+  ed.m = openModal('', {cls: 'wide', onClose: () => !ed.dirty || confirm('Chiudere senza salvare le modifiche?')});
+  ed.m.sheet.addEventListener('input', e => edInput(ed, e));
+  ed.m.sheet.addEventListener('change', e => edChange(ed, e));
+  ed.m.sheet.addEventListener('click', e => edClick(ed, e));
+  drawEditor(ed);
+}
+const ro = ed => ed.d.stato === 'inviata';
+function aiCls(obj, f) { const a = obj._ai?.[f]; return a === 'stima' ? 'ai-guess' : a ? 'ai-doc' : ''; }
+function drawEditor(ed) {
+  const d = ed.d, R = ro(ed), dis = R ? 'disabled' : '';
+  const I = (f, type = 'text', extra = '') => `<input data-f="${f}" type="${type}" value="${esc(d[f] ?? '')}" class="${aiCls(d, f)}" ${dis} ${extra}>`;
+  const sel = (f, opts, blank) => `<select data-f="${f}" class="${aiCls(d, f)}" ${dis}>${blank ? `<option value="">${blank}</option>` : ''}${opts.map(([v, l]) => `<option value="${esc(v)}" ${d[f] === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  const tr = d.tipo === 'trasferta';
+  const hasAI = d._ai && Object.keys(d._ai).length || (d.spese || []).some(s => s._ai && Object.keys(s._ai).length);
+  ed.m.sheet.innerHTML = `
+    <div class="sheet-head">
+      <div><div class="eyebrow">${esc(d.id || 'Nuova')} · ${tr ? 'Trasferta' : 'Spesa singola'}</div><h2>${esc(d.luogo || (tr ? 'Nuova trasferta' : 'Nuova spesa'))}</h2></div>
+      <div class="head-tot"><span class="pill st-${d.stato}">${d.stato === 'inviata' ? 'Inviata' + (d.invioId ? ' · ' + esc(d.invioId) : '') : 'Bozza'}</span><div class="big" data-slot="tot"></div></div>
+      <button class="icon-btn" data-act="close">${ICON.x}</button>
+    </div>
+    <div class="sheet-body">
+      ${R ? `<div class="banner info">Pratica inviata: per modificarla annulla l'invio ${esc(d.invioId || '')} da <b>Esporta → Storico invii</b>.</div>` : ''}
+      ${hasAI ? `<div class="banner ai"><b>Bozza compilata dall'AI</b> — controlla i campi prima di salvare.${d._aiNota ? '<br>' + esc(d._aiNota) : ''}
+        <div class="legend" style="margin-top:6px"><span><i style="background:var(--ai);border-color:var(--ai-line)"></i>letto dai documenti o dal testo</span><span><i style="background:var(--guess);border-color:var(--guess-line)"></i>dedotto o stimato</span></div></div>` : ''}
+      <ul class="avvisi" data-slot="avvisi"></ul>
+      <section class="card">
+        <div class="sec-head"><h3>Dati</h3>
+          ${!R && ed.isNew ? `<span class="small"><label><input type="radio" name="tipo" value="trasferta" ${tr ? 'checked' : ''}> Trasferta</label> &nbsp; <label><input type="radio" name="tipo" value="spesa" ${!tr ? 'checked' : ''}> Spesa singola</label></span>` : ''}
+        </div>
+        <div class="fgrid">
+          <label class="fld s3 half"><span>${tr ? 'Data partenza' : 'Data'}</span>${I('data', 'date')}</label>
+          ${tr ? `<label class="fld s3 half"><span>Data ritorno</span>${I('dataFine', 'date')}</label>` : ''}
+          <label class="fld ${tr ? 's6' : 's3'}"><span>Società</span>${sel('societaId', S.cfg.societa.map(s => [s.id, s.nome]), '— scegli —')}</label>
+          ${!tr ? '<span class="fld s6"></span>' : ''}
+          <label class="fld s6"><span>${tr ? 'Destinazione' : 'Descrizione'}</span>${I('luogo', 'text', `placeholder="${tr ? 'Es. Roma' : 'Es. Biglietto conferenza Italian Tech Week'}"`)}</label>
+          ${tr ? `<label class="fld s6"><span>Percorso</span>${I('percorso', 'text', 'placeholder="Casa → Roma → Firenze → Casa"')}</label>` : '<span class="fld s6"></span>'}
+          <label class="fld s6"><span>Motivo</span>${I('motivo', 'text', 'placeholder="Es. incontro investitore, visita stabilimento"')}</label>
+          <label class="fld s3 half"><span>Controparte${tr ? '' : ' (facoltativa)'}</span>${I('controparte')}</label>
+          <label class="fld s3 half"><span>Deal / progetto</span>${I('deal')}</label>
+          ${tr ? `
+          <label class="fld s3"><span>Veicolo</span>${sel('veicoloId', S.cfg.veicoli.map(v => [v.id, v.nome + (v.targa ? ' · ' + v.targa : '')]), 'Nessuna auto propria')}</label>
+          <label class="fld s3"><span>Tratta frequente</span><select data-act="tratta" ${dis}><option value="">—</option>${S.cfg.tratte.map(t => `<option value="${esc(t.id)}" ${d.trattaId === t.id ? 'selected' : ''}>${esc(t.da)} → ${esc(t.a)} (${fmtK(t.km)} km)</option>`).join('')}</select></label>
+          <label class="fld s2 half"><span>Km totali</span>${I('km', 'number', 'min="0" step="1" inputmode="numeric"')}</label>
+          <label class="check fld s2 half"><input type="checkbox" data-f="ar" ${d.ar ? 'checked' : ''} ${dis}> Andata e ritorno</label>
+          <label class="check fld s2 half"><input type="checkbox" data-f="estero" ${d.estero ? 'checked' : ''} ${dis}> Estero</label>` : ''}
+          <label class="fld s12"><span>Note</span>${I('note')}</label>
+        </div>
+        ${tr ? `<div class="kmcalc" data-slot="kmcalc"></div>
+          ${!R && !d.trattaId ? `<label class="small muted" style="display:inline-flex;gap:6px;margin-top:6px;align-items:center"><input type="checkbox" data-act="salva-tratta" ${ed.salvaTratta ? 'checked' : ''}> Salva come tratta frequente</label>` : ''}` : ''}
+      </section>
+      <section class="card">
+        <div class="sec-head"><h3>Spese</h3>${!R ? `<button class="btn sm" data-act="add-spesa">+ Aggiungi spesa</button>` : ''}</div>
+        <div data-slot="spese"></div>
+      </section>
+      <section class="card">
+        <div class="sec-head"><h3>Altri documenti</h3>${!R ? `<label class="btn sm">+ Carica<input type="file" multiple hidden data-act="up-allegato"></label>` : ''}</div>
+        <div class="files">${(d.allegati || []).map(n => `<span class="doclink" data-view="${esc(n)}">${ICON.doc}${esc(n)}${!R ? `<button class="icon-btn" style="width:20px;height:20px" data-rm-all="${esc(n)}">${ICON.x}</button>` : ''}</span>`).join('') || '<span class="small muted">Nessuno (es. agenda, conferma di prenotazione, invito)</span>'}</div>
+      </section>
+    </div>
+    <div class="sheet-foot">
+      ${!R && !ed.isNew ? `<button class="btn danger" data-act="del-pratica">${ICON.trash}<span class="lbl">Elimina</span></button>` : ''}
+      ${!ed.isNew ? `<button class="btn" data-act="dup-pratica">Duplica</button>` : ''}
+      ${!ed.isNew && fs.kind === 'onedrive' ? `<span class="small muted">${ICON.folder} ${esc(d.folder || '')}</span>` : ''}
+      <span class="spacer"></span>
+      <button class="btn" data-act="close">${R ? 'Chiudi' : 'Annulla'}</button>
+      ${!R ? `<button class="btn primary" data-act="save-pratica">Salva</button>` : ''}
+    </div>`;
+  drawSpese(ed); refreshSlots(ed);
+}
+function refreshSlots(ed) {
+  const d = ed.d, t = totals(d), sl = n => $(`[data-slot="${n}"]`, ed.m.sheet);
+  sl('tot').textContent = fmtE(t.tot) + ' €';
+  const ck = checks(d);
+  sl('avvisi').innerHTML = ck.map(c => `<li class="${c.lvl}">${ICON.warn}<span>${esc(c.m)}</span></li>`).join('');
+  if (sl('kmcalc')) {
+    const k = t.km, v = vehById(d.veicoloId);
+    sl('kmcalc').innerHTML = !d.veicoloId ? 'Senza auto propria: nessun rimborso chilometrico.'
+      : k.missing ? `Tariffa ACI ${yearOf(d.data)} mancante per ${esc(v?.nome || 'il veicolo')}.`
+      : `Rimborso km: <b>${fmtK(k.km)} km × ${fmtT(k.tariffa)} €/km = ${fmtE(k.importo)} €</b>${d.tariffaCongelata != null ? ' (tariffa congelata all\'invio)' : ` · tariffa ACI ${yearOf(d.data)}`}`;
+  }
+  const kmRow = $('[data-slot="kmrow"]', ed.m.sheet); if (kmRow) kmRow.textContent = fmtE(t.km.importo);
+}
+function spesaRow(ed, s, i) {
+  const c = catOf(s.categoria), g = gruppoOf(s), R = ro(ed);
+  const extra = [s.descrizione, PAGAMENTI[s.pagamento], g !== 'T' && s.fatturaIntestataA ? INTESTAZIONI[s.fatturaIntestataA] : '', g === 'R' && s.ospiti ? 'con ' + s.ospiti : ''].filter(Boolean).join(' · ');
+  return `<div class="srow">
+    <div class="s-date">${fmtD(s.data)}</div>
+    <div class="s-main"><b>${esc(c.label)}</b><span class="gtag g-${g}" title="Natura per il commercialista">${GROUPS[g]}</span><div class="s-sub">${esc(extra)}</div></div>
+    <div class="s-doc">${(s.ricevute || []).map(n => `<span class="doclink" data-view="${esc(n)}" title="${esc(n)}">${ICON.doc}ricevuta</span>`).join('') || '<span class="small" style="color:var(--warn)">senza ricevuta</span>'}</div>
+    <div class="s-amt num"><b>${fmtE(s.importo)}</b></div>
+    <div class="s-act">${!R ? `<button class="icon-btn" data-edit-s="${i}" title="Modifica">${ICON.pen}</button><button class="icon-btn" data-del-s="${i}" title="Elimina">${ICON.trash}</button>` : ''}</div>
+  </div>`;
+}
+function spesaForm(ed) {
+  const s = ed.editing.s, g = gruppoOf(s), autoG = catOf(s.categoria).g;
+  const I = (f, type = 'text', extra = '') => `<input data-sf="${f}" type="${type}" value="${esc(s[f] ?? '')}" class="${aiCls(s, f)}" ${extra}>`;
+  const opts = Object.entries(GROUPS).map(([gk, gl]) => `<optgroup label="${gl}">${CATS.filter(c => c.g === gk).map(c => `<option value="${c.id}" ${s.categoria === c.id ? 'selected' : ''}>${c.label}</option>`).join('')}</optgroup>`).join('');
+  return `<div class="sform">
+    <div class="fgrid">
+      <div class="fld s12"><span>Ricevuta / fattura</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          ${(s.ricevute || []).map(n => `<span class="doclink" data-view="${esc(n)}">${ICON.doc}${esc(n.startsWith('tmp-') ? 'nuovo documento' : n)}<button class="icon-btn" style="width:20px;height:20px" data-rm-ric="${esc(n)}">${ICON.x}</button></span>`).join('')}
+          <label class="btn sm">${ICON.doc} Carica foto o PDF<input type="file" accept="image/*,application/pdf" hidden data-act="up-ricevuta"></label>
+          <span class="small muted" data-slot="aistat">${dev.apiKey ? 'Caricando un documento i campi si compilano con l\'AI.' : 'Imposta la chiave AI per la lettura automatica.'}</span>
+        </div></div>
+      <label class="fld s3 half"><span>Data</span>${I('data', 'date')}</label>
+      <label class="fld s3 half"><span>Importo €</span>${I('importo', 'number', 'step="0.01" min="0" inputmode="decimal"')}</label>
+      <label class="fld s3"><span>Categoria</span><select data-sf="categoria" class="${aiCls(s, 'categoria')}">${opts}</select></label>
+      <label class="fld s3"><span>Natura <span class="gtag g-${g}">${GROUPS[g]}</span></span><select data-sf="gruppo"><option value="">Automatica (${GROUPS[autoG]})</option>${Object.entries(GROUPS).map(([k, l]) => `<option value="${k}" ${s.gruppo === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="fld s6"><span>Descrizione</span>${I('descrizione', 'text', 'placeholder="Es. Trattoria Da Mario, cena"')}</label>
+      <label class="fld s3 half"><span>Pagamento</span><select data-sf="pagamento" class="${aiCls(s, 'pagamento')}">${Object.entries(PAGAMENTI).map(([k, l]) => `<option value="${k}" ${s.pagamento === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="fld s3 half"><span>Documento</span><select data-sf="fatturaIntestataA" class="${aiCls(s, 'fatturaIntestataA')}">${Object.entries(INTESTAZIONI).map(([k, l]) => `<option value="${k}" ${s.fatturaIntestataA === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      ${s.fatturaIntestataA !== 'scontrino' ? `<label class="fld s3 half"><span>Imponibile €</span>${I('imponibile', 'number', 'step="0.01"')}</label><label class="fld s3 half"><span>IVA €</span>${I('iva', 'number', 'step="0.01"')}</label>` : ''}
+      ${g === 'R' ? `<label class="fld s6"><span>Ospiti (chi)</span>${I('ospiti', 'text', 'placeholder="Es. Mario Rossi (Fondo X), Anna Bianchi"')}</label><label class="fld s6"><span>Motivo della rappresentanza</span>${I('motivoRappr', 'text', 'placeholder="Es. presentazione fund raising"')}</label>` : ''}
+    </div>
+    <div class="sform-foot"><button class="btn sm" data-act="cancel-spesa">Annulla</button><button class="btn sm primary" data-act="ok-spesa">${ed.editing.idx === -1 ? 'Aggiungi' : 'Conferma'}</button></div>
+  </div>`;
+}
+function drawSpese(ed) {
+  const d = ed.d, slot = $('[data-slot="spese"]', ed.m.sheet), t = totals(d);
+  let html = '';
+  if (ed.editing?.idx === -1) html += spesaForm(ed);
+  if (d.tipo === 'trasferta' && d.veicoloId && +d.km) html += `<div class="srow km"><div class="s-date">${fmtD(d.data)}</div><div class="s-main"><b>Rimborso chilometrico</b><span class="gtag g-T">Trasferta</span><div class="s-sub">${fmtK(d.km)} km · ${esc(vehById(d.veicoloId)?.nome || '')}</div></div><div class="s-doc"></div><div class="s-amt num"><b data-slot="kmrow">${fmtE(t.km.importo)}</b></div><div class="s-act"></div></div>`;
+  html += (d.spese || []).map((s, i) => ed.editing?.idx === i ? spesaForm(ed) : spesaRow(ed, s, i)).join('');
+  if (!html) html = `<div class="small muted" style="padding:8px 4px">Nessuna spesa. ${!ro(ed) ? 'Usa <b>+ Aggiungi spesa</b> e carica la ricevuta.' : ''}</div>`;
+  slot.innerHTML = html;
+}
+function readVal(t) {
+  if (t.type === 'checkbox') return t.checked;
+  if (t.type === 'number') return t.value === '' ? null : +t.value;
+  return t.value;
+}
+function edInput(ed, e) {
+  const t = e.target;
+  if (t.dataset.f) {
+    const f = t.dataset.f; ed.d[f] = readVal(t); if (f === 'km') { ed.d.km = +t.value || 0; ed.d.kmStimati = false; ed.d.trattaId = ''; }
+    if (ed.d._ai) delete ed.d._ai[f]; t.classList.remove('ai-doc', 'ai-guess'); ed.dirty = true;
+    if (f === 'ar' && ed.d.trattaId) { const tr = S.cfg.tratte.find(x => x.id === ed.d.trattaId); if (tr) { ed.d.km = Math.round(+tr.km * (ed.d.ar ? 2 : 1)); const ki = $('[data-f="km"]', ed.m.sheet); if (ki) ki.value = ed.d.km; } }
+    if (['veicoloId', 'km', 'ar', 'data'].includes(f)) drawSpese(ed);
+    if (f === 'luogo') $('.sheet-head h2', ed.m.sheet).textContent = ed.d.luogo || 'Nuova pratica';
+    refreshSlots(ed);
+  } else if (t.dataset.sf && ed.editing) {
+    const f = t.dataset.sf, s = ed.editing.s; s[f] = readVal(t);
+    if (f === 'importo') s.importo = +t.value || 0;
+    if (s._ai) delete s._ai[f]; t.classList.remove('ai-doc', 'ai-guess'); ed.dirty = true;
+    if (['categoria', 'gruppo', 'fatturaIntestataA'].includes(f)) drawSpese(ed);
+  } else if (t.name === 'tipo') {
+    ed.d.tipo = t.value; if (t.value === 'spesa') { ed.d.veicoloId = ''; ed.d.km = 0; ed.d.dataFine = ''; } else if (!ed.d.veicoloId) ed.d.veicoloId = newPratica('trasferta').veicoloId;
+    ed.dirty = true; drawEditor(ed);
+  } else if (t.dataset.act === 'salva-tratta') ed.salvaTratta = t.checked;
+}
+async function edChange(ed, e) {
+  const t = e.target, act = t.dataset.act;
+  if (act === 'tratta') {
+    const tr = S.cfg.tratte.find(x => x.id === t.value); ed.d.trattaId = t.value; ed.dirty = true;
+    if (tr) { ed.d.km = Math.round(+tr.km * (ed.d.ar ? 2 : 1)); ed.d.kmStimati = false; if (!ed.d.luogo) ed.d.luogo = tr.a; if (!ed.d.percorso) ed.d.percorso = `${tr.da} → ${tr.a}${ed.d.ar ? ' → ' + tr.da : ''}`; if (ed.d._ai) delete ed.d._ai.km; }
+    drawEditor(ed);
+  } else if (act === 'up-allegato') {
+    for (const f of t.files) { const p = await prepFile(f); const n = uniqueName(ed.d, f.name.replace(/\.[^.]+$/, ''), p.ext, new Set(ed.pending.keys())); ed.pending.set(n, p.blob); ed.d.allegati.push(n); }
+    ed.dirty = true; drawEditor(ed);
+  } else if (act === 'up-ricevuta' && ed.editing) {
+    const f = t.files[0]; if (!f) return; const p = await prepFile(f), s = ed.editing.s;
+    const tmp = 'tmp-' + uid() + p.ext; ed.pending.set(tmp, p.blob); s.ricevute.push(tmp); ed.dirty = true; drawSpese(ed);
+    if (dev.apiKey) {
+      const st = () => $('[data-slot="aistat"]', ed.m.sheet);
+      st().innerHTML = '<span class="spin" style="width:12px;height:12px;vertical-align:-2px"></span> Lettura AI in corso…';
+      try {
+        const r = await aiReadReceipt(p.blob, f.name, ed.d); s._ai = s._ai || {};
+        const set = (k, v) => { if (v === null || v === undefined || v === '') return; s[k] = v; s._ai[k] = 'doc'; };
+        if (/^\d{4}-\d{2}-\d{2}$/.test(r.data || '')) set('data', r.data);
+        if (CAT[r.categoria]) set('categoria', r.categoria);
+        if (+r.importo > 0) set('importo', r2(r.importo));
+        if (PAGAMENTI[r.pagamento]) set('pagamento', r.pagamento);
+        set('descrizione', r.descrizione); if (INTESTAZIONI[r.fatturaIntestataA]) set('fatturaIntestataA', r.fatturaIntestataA);
+        if (+r.imponibile) set('imponibile', r2(r.imponibile)); if (+r.iva) set('iva', r2(r.iva));
+        if (ed.editing?.s === s) { drawSpese(ed); const x = st(); if (x) x.textContent = 'Campi compilati dall\'AI: controllali.'; }
+      } catch (err) { const x = st(); if (x) x.textContent = errMsg(err); }
+    }
+  }
+}
+function finalizeSpesaFiles(ed, s) {
+  s.ricevute = s.ricevute.map(n => {
+    if (!n.startsWith('tmp-')) return n;
+    const blob = ed.pending.get(n); ed.pending.delete(n);
+    const nn = uniqueName(ed.d, spesaFileBase(s), (n.match(/\.[a-z0-9]{2,5}$/i) || [''])[0], new Set(ed.pending.keys()));
+    ed.pending.set(nn, blob); return nn;
+  });
+}
+async function edClick(ed, e) {
+  const el = e.target.closest('[data-act],[data-edit-s],[data-del-s],[data-view],[data-rm-ric],[data-rm-all]'); if (!el) return;
+  const d = ed.d;
+  if (el.dataset.rmRic !== undefined) { e.preventDefault(); e.stopPropagation(); const s = ed.editing.s; s.ricevute = s.ricevute.filter(n => n !== el.dataset.rmRic); if (el.dataset.rmRic.startsWith('tmp-')) ed.pending.delete(el.dataset.rmRic); else ed.removed.add(el.dataset.rmRic); ed.dirty = true; return drawSpese(ed); }
+  if (el.dataset.rmAll !== undefined) { e.preventDefault(); e.stopPropagation(); d.allegati = d.allegati.filter(n => n !== el.dataset.rmAll); ed.pending.delete(el.dataset.rmAll); ed.removed.add(el.dataset.rmAll); ed.dirty = true; return drawEditor(ed); }
+  if (el.dataset.view !== undefined) return openFile(ed, el.dataset.view);
+  if (el.dataset.editS !== undefined) { if (ed.editing) return toast('Conferma o annulla prima la spesa aperta.'); ed.editing = {idx: +el.dataset.editS, s: clone(d.spese[+el.dataset.editS])}; return drawSpese(ed); }
+  if (el.dataset.delS !== undefined) {
+    if (!confirm('Eliminare questa spesa?')) return;
+    const s = d.spese.splice(+el.dataset.delS, 1)[0]; for (const n of s.ricevute || []) ed.removed.add(n);
+    ed.dirty = true; drawSpese(ed); return refreshSlots(ed);
+  }
+  const act = el.dataset.act;
+  if (act === 'add-spesa') { if (ed.editing) return toast('Conferma o annulla prima la spesa aperta.'); ed.editing = {idx: -1, s: newSpesa(d)}; return drawSpese(ed); }
+  if (act === 'cancel-spesa') { for (const n of ed.editing.s.ricevute) if (n.startsWith('tmp-')) ed.pending.delete(n); ed.editing = null; return drawSpese(ed); }
+  if (act === 'ok-spesa') {
+    const s = ed.editing.s; if (!(+s.importo > 0)) return toast('Indica l\'importo.', true);
+    if (gruppoOf(s) === 'R' && (!(s.ospiti || '').trim() || !(s.motivoRappr || '').trim())) return toast('Per la rappresentanza servono ospiti e motivo.', true);
+    s.importo = r2(s.importo); finalizeSpesaFiles(ed, s);
+    if (ed.editing.idx === -1) d.spese.push(s); else d.spese[ed.editing.idx] = s;
+    d.spese.sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+    ed.editing = null; ed.dirty = true; drawSpese(ed); return refreshSlots(ed);
+  }
+  if (act === 'save-pratica') return savePratica(ed);
+  if (act === 'del-pratica') return deletePratica(ed);
+  if (act === 'dup-pratica') {
+    if (ed.dirty && !confirm('Ci sono modifiche non salvate: duplicare comunque la versione salvata?')) return;
+    const n = clone(S.idx.pratiche[d.id] || d);
+    Object.assign(n, {id: null, folder: null, stato: 'bozza', invioId: null, tariffaCongelata: null, data: today(), dataFine: '', allegati: [], createdAt: null, updatedAt: null});
+    n.spese = n.spese.map(s => Object.assign(s, {id: uid(), data: today(), ricevute: []}));
+    ed.m.close(true); return openEditor(n, {isNew: true, dirty: true});
+  }
+}
+function folderName(d) { return safeName(`${d.id} - ${d.data} ${d.luogo || (d.tipo === 'trasferta' ? 'trasferta' : 'spesa')} - ${socById(d.societaId)?.nome?.split(' ')[0] || ''}`); }
+function stripTransient(d) {
+  const c = clone(d); delete c._ai; delete c._aiNota;
+  for (const s of c.spese || []) delete s._ai;
+  return c;
+}
+function riepilogoTxt(p) {
+  const t = totals(p), soc = socById(p.societaId), v = vehById(p.veicoloId);
+  const L = [`${p.id} — ${p.tipo === 'trasferta' ? 'Trasferta' : 'Spesa singola'} — ${p.stato.toUpperCase()}${p.invioId ? ' (' + p.invioId + ')' : ''}`,
+    `Data: ${fmtD(p.data)}${p.dataFine ? ' → ' + fmtD(p.dataFine) : ''}`, `Società: ${soc?.nome || ''}`, `${p.tipo === 'trasferta' ? 'Destinazione' : 'Descrizione'}: ${p.luogo || ''}`];
+  if (p.percorso) L.push(`Percorso: ${p.percorso}`);
+  L.push(`Motivo: ${p.motivo || ''}`); if (p.controparte) L.push(`Controparte: ${p.controparte}`); if (p.deal) L.push(`Deal: ${p.deal}`);
+  if (t.km.importo) L.push(`Km: ${p.km} × ${fmtT(t.km.tariffa)} €/km (${v?.nome || ''}) = ${fmtE(t.km.importo)} €`);
+  L.push('', 'SPESE');
+  for (const s of p.spese || []) L.push(`- ${fmtD(s.data)}  ${catOf(s.categoria).label} [${GROUPS[gruppoOf(s)]}]  ${fmtE(s.importo)} €  ${s.descrizione || ''}  ${(s.ricevute || []).join(', ')}`);
+  L.push('', `TOTALE: ${fmtE(t.tot)} €`, '', `Generato dall'app Rimborsi il ${new Date().toLocaleString('it-IT')}`);
+  return L.join('\r\n');
+}
+async function savePratica(ed) {
+  if (ed.editing) return toast('Conferma o annulla prima la spesa aperta.', true);
+  const d = ed.d, errs = checks(d).filter(c => c.lvl === 'err');
+  if (errs.length) { refreshSlots(ed); $('[data-slot="avvisi"]', ed.m.sheet).scrollIntoView({behavior: 'smooth', block: 'center'}); return toast('Da completare: ' + errs[0].m, true); }
+  await guard(async () => {
+    busy('Salvo…');
+    const isNew = !d.id, now = new Date().toISOString();
+    if (isNew) { const max = Math.max(0, ...Object.keys(S.idx.pratiche).map(k => +k.slice(1) || 0)); d.id = 'P' + String(max + 1).padStart(4, '0'); d.createdAt = now; }
+    d.updatedAt = now;
+    const want = folderName(d);
+    if (!isNew && ed.etag) { const cur = await fs.etagOf(`pratiche/${d.folder}/pratica.json`); if (cur && cur !== ed.etag) throw conflictErr(); }
+    if (d.folder && d.folder !== want) await fs.rename('pratiche/' + d.folder, want);
+    d.folder = want; const base = `pratiche/${want}/`, used = usedNames(d);
+    for (const [n, blob] of ed.pending) if (used.has(n)) { busy('Carico ' + n + '…'); await fs.putBlob(base + n, blob); }
+    for (const n of ed.removed) if (!used.has(n)) await fs.remove(base + n).catch(() => {});
+    busy('Salvo…');
+    const clean = stripTransient(d);
+    ed.etag = await fs.writeJSON(base + 'pratica.json', clean);
+    await fs.putBlob(base + 'riepilogo.txt', new Blob([riepilogoTxt(clean)], {type: 'text/plain;charset=utf-8'})).catch(() => {});
+    await updateIndex(idx => { idx.pratiche[clean.id] = clean; });
+    const last = ls.get(LAST_KEY, {}); ls.set(LAST_KEY, {societaId: d.societaId, veicoloId: d.veicoloId || last.veicoloId});
+    if (ed.salvaTratta && d.tipo === 'trasferta' && +d.km > 0) {
+      const da = (d.percorso || '').split(/→|->|–| - /)[0].trim() || 'Casa';
+      const cfg = clone(S.cfg); cfg.tratte.push({id: uid(), da, a: d.luogo || '?', km: Math.round(d.ar ? d.km / 2 : d.km)});
+      await saveConfig(cfg).catch(e => toast(errMsg(e), true));
+    }
+    busy(null); ed.dirty = false; ed.pending.clear(); ed.removed.clear(); ed.m.close(true); refreshMain();
+    toast(`${clean.id} salvata`);
+  }, 'Salvataggio non riuscito');
+}
+async function deletePratica(ed) {
+  const d = ed.d;
+  if (!confirm(`Eliminare ${d.id} e la sua cartella con tutti i documenti?`)) return;
+  await guard(async () => {
+    busy('Elimino…'); await fs.remove('pratiche/' + d.folder);
+    await updateIndex(idx => { delete idx.pratiche[d.id]; });
+    busy(null); ed.dirty = false; ed.m.close(true); refreshMain(); toast(`${d.id} eliminata`);
+  });
+}
+
+/* =========================================================
+   INCASSI
+   ========================================================= */
+function openPagamento(socId) {
+  const m = openModal(`<div class="sheet-head"><div><div class="eyebrow">Incasso</div><h2>Registra un pagamento ricevuto</h2></div><button class="icon-btn" data-act="close">${ICON.x}</button></div>
+    <div class="sheet-body"><div class="fgrid">
+      <label class="fld s6"><span>Società</span><select id="pSoc">${S.cfg.societa.map(s => `<option value="${esc(s.id)}" ${s.id === socId ? 'selected' : ''}>${esc(s.nome)}</option>`).join('')}</select></label>
+      <label class="fld s3 half"><span>Data</span><input id="pData" type="date" value="${today()}"></label>
+      <label class="fld s3 half"><span>Importo €</span><input id="pImp" type="number" step="0.01" min="0" inputmode="decimal"></label>
+      <label class="fld s12"><span>Riferimento (es. bonifico, CRO)</span><input id="pRif"></label>
+    </div></div>
+    <div class="sheet-foot"><span class="spacer"></span><button class="btn" data-act="close">Annulla</button><button class="btn primary" id="pOk">Registra</button></div>`);
+  $('#pOk', m.sheet).onclick = () => guard(async () => {
+    const imp = r2($('#pImp', m.sheet).value); if (!(imp > 0)) return toast('Indica l\'importo.', true);
+    busy('Salvo…');
+    await updatePag(pg => { pg.pagamenti.push({id: uid(), societaId: $('#pSoc', m.sheet).value, data: $('#pData', m.sheet).value, importo: imp, riferimento: $('#pRif', m.sheet).value.trim()}); });
+    busy(null); m.close(true); refreshMain(); toast('Incasso registrato');
+  });
+}
+
+/* =========================================================
+   ESPORTA: invii (PDF), storico, CSV
+   ========================================================= */
+function openExport() {
+  let tab = 'invio';
+  const bozze = pratiche().filter(p => p.stato === 'bozza');
+  const firstBozza = bozze.map(p => p.data).sort()[0] || today().slice(0, 8) + '01';
+  const st = {soc: S.f.soc || bozze[0]?.societaId || S.cfg.societa[0]?.id, dal: firstBozza, al: today(), sel: null};
+  const m = openModal(`<div class="sheet-head"><div><div class="eyebrow">Esporta</div><h2>Note spese e dati</h2></div><button class="icon-btn" data-act="close">${ICON.x}</button></div>
+    <div class="sheet-body"><div class="tabs"><button data-tab="invio">Nuovo invio</button><button data-tab="storico">Storico invii</button><button data-tab="csv">CSV per il commercialista</button></div><div id="xBody"></div></div>
+    <div class="sheet-foot" id="xFoot"></div>`, {cls: 'wide'});
+  const body = () => $('#xBody', m.sheet), foot = () => $('#xFoot', m.sheet);
+  const candidates = () => pratiche().filter(p => p.stato === 'bozza' && p.societaId === st.soc && p.data >= st.dal && p.data <= st.al).sort((a, b) => a.data.localeCompare(b.data));
+  const draw = () => {
+    $$('.tabs button', m.sheet).forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+    if (tab === 'invio') {
+      const list = candidates(); if (!st.sel) st.sel = new Set(list.map(p => p.id));
+      const chosen = list.filter(p => st.sel.has(p.id)), tot = r2(chosen.reduce((a, p) => a + totals(p).tot, 0));
+      const blocked = chosen.filter(p => checks(p).some(c => c.lvl === 'err'));
+      body().innerHTML = `<div class="fgrid" style="margin-bottom:12px">
+          <label class="fld s6"><span>Società</span><select id="xSoc">${S.cfg.societa.map(s => `<option value="${esc(s.id)}" ${s.id === st.soc ? 'selected' : ''}>${esc(s.nome)}</option>`).join('')}</select></label>
+          <label class="fld s3 half"><span>Dal</span><input type="date" id="xDal" value="${st.dal}"></label>
+          <label class="fld s3 half"><span>Al</span><input type="date" id="xAl" value="${st.al}"></label></div>
+        ${list.length ? `<table class="mini"><thead><tr><th style="width:28px"><input type="checkbox" id="xAll" ${chosen.length === list.length ? 'checked' : ''}></th><th>Pratica</th><th>Data</th><th>Luogo / descrizione</th><th class="num">Totale €</th><th></th></tr></thead><tbody>
+          ${list.map(p => { const ck = checks(p), e = ck.some(c => c.lvl === 'err'); return `<tr class="${st.sel.has(p.id) ? 'sel' : ''}"><td><input type="checkbox" data-pick="${esc(p.id)}" ${st.sel.has(p.id) ? 'checked' : ''}></td><td>${esc(p.id)}</td><td>${fmtD(p.data)}</td><td>${esc(p.luogo)}</td><td class="num">${fmtE(totals(p).tot)}</td><td>${ck.length ? `<span class="warnbadge ${e ? 'err' : ''}" title="${esc(ck.map(c => c.m).join('\n'))}">${ICON.warn}${ck.length}</span>` : ''}</td></tr>`; }).join('')}
+          </tbody></table>` : `<div class="empty">Nessuna bozza di questa società nel periodo.</div>`}
+        ${blocked.length ? `<div class="banner info" style="margin-top:12px;color:var(--bad)">Da completare prima dell'invio: ${blocked.map(p => esc(p.id)).join(', ')}.</div>` : ''}
+        <p class="small muted" style="margin-top:12px">L'invio genera il PDF (elenco pratiche, riepilogo per natura, dettaglio e ricevute), lo salva in <code>invii/</code> e porta le pratiche a <b>inviata</b>: la tariffa km viene congelata e non saranno più modificabili, salvo annullare l'invio.</p>`;
+      foot().innerHTML = `<span class="small"><b>${chosen.length}</b> pratiche · <b>${fmtE(tot)} €</b></span><span class="spacer"></span>
+        <button class="btn" id="xPrev" ${chosen.length ? '' : 'disabled'}>Anteprima PDF</button>
+        <button class="btn primary" id="xSend" ${chosen.length && !blocked.length ? '' : 'disabled'}>Invia e genera PDF</button>`;
+      $('#xSoc', m.sheet).onchange = e => { st.soc = e.target.value; st.sel = null; draw(); };
+      $('#xDal', m.sheet).onchange = e => { st.dal = e.target.value; st.sel = null; draw(); };
+      $('#xAl', m.sheet).onchange = e => { st.al = e.target.value; st.sel = null; draw(); };
+      const all = $('#xAll', m.sheet); if (all) all.onchange = () => { st.sel = new Set(all.checked ? list.map(p => p.id) : []); draw(); };
+      $$('[data-pick]', m.sheet).forEach(c => c.onchange = () => { c.checked ? st.sel.add(c.dataset.pick) : st.sel.delete(c.dataset.pick); draw(); });
+      $('#xPrev', m.sheet).onclick = () => guard(async () => {
+        busy('Preparo l\'anteprima…');
+        const inv = {id: 'ANTEPRIMA', data: today(), societaId: st.soc, pratiche: chosen.map(p => p.id)};
+        const bytes = await buildPdf(inv, chosen, {preview: true}); busy(null);
+        download(new Blob([bytes], {type: 'application/pdf'}), `Anteprima nota spese ${socById(st.soc)?.nome || ''} ${today()}.pdf`);
+      }, 'PDF');
+      $('#xSend', m.sheet).onclick = () => {
+        if (!confirm(`Inviare ${chosen.length} pratiche a ${socById(st.soc)?.nome} per ${fmtE(tot)} €?\nDiventeranno "inviate" e non più modificabili.`)) return;
+        guard(async () => { await creaInvio(st.soc, chosen.map(p => p.id)); st.sel = null; tab = 'storico'; draw(); }, 'Invio non riuscito');
+      };
+    } else if (tab === 'storico') {
+      const inv = Object.values(S.idx.invii).sort((a, b) => b.id.localeCompare(a.id));
+      body().innerHTML = inv.length ? `<table class="mini"><thead><tr><th>Invio</th><th>Data</th><th>Società</th><th>Pratiche</th><th class="num">Totale €</th><th></th></tr></thead><tbody>
+        ${inv.map(i => `<tr><td><b>${esc(i.id)}</b>${i.annullato ? ' <span class="pill st-bozza">annullato</span>' : ''}</td><td>${fmtD(i.data)}</td><td>${esc(socById(i.societaId)?.nome || '')}</td><td class="small">${esc(i.pratiche.join(', '))}</td><td class="num">${fmtE(i.totale)}</td>
+          <td style="text-align:right;white-space:nowrap"><button class="btn sm" data-pdf="${esc(i.id)}">PDF</button> ${!i.annullato ? `<button class="btn sm danger" data-undo="${esc(i.id)}">Annulla invio</button>` : ''}</td></tr>`).join('')}</tbody></table>`
+        : `<div class="empty">Nessun invio ancora.</div>`;
+      foot().innerHTML = `<span class="small muted">Annullare un invio riporta le pratiche in bozza; il PDF resta nell'archivio come traccia.</span><span class="spacer"></span><button class="btn" data-act="close">Chiudi</button>`;
+      $$('[data-pdf]', m.sheet).forEach(b => b.onclick = () => guard(async () => { const i = S.idx.invii[b.dataset.pdf]; busy('Scarico…'); const blob = await fs.getBlob('invii/' + i.pdf); busy(null); download(blob, i.pdf); }));
+      $$('[data-undo]', m.sheet).forEach(b => b.onclick = () => {
+        if (!confirm(`Annullare l'invio ${b.dataset.undo}? Le pratiche tornano in bozza.`)) return;
+        guard(async () => { await annullaInvio(b.dataset.undo); draw(); });
+      });
+    } else {
+      const sc = st.csv || (st.csv = {soc: '', dal: yearOf() + '-01-01', al: today()});
+      const list = () => pratiche().filter(p => (!sc.soc || p.societaId === sc.soc) && p.data >= sc.dal && p.data <= sc.al);
+      body().innerHTML = `<div class="fgrid">
+        <label class="fld s6"><span>Società</span><select id="cSoc"><option value="">Tutte</option>${S.cfg.societa.map(s => `<option value="${esc(s.id)}" ${s.id === sc.soc ? 'selected' : ''}>${esc(s.nome)}</option>`).join('')}</select></label>
+        <label class="fld s3 half"><span>Dal</span><input type="date" id="cDal" value="${sc.dal}"></label>
+        <label class="fld s3 half"><span>Al</span><input type="date" id="cAl" value="${sc.al}"></label></div>
+        <p class="small muted" style="margin-top:12px">Una riga per spesa e una per il rimborso km, con natura (trasferta / costo società / rappresentanza), intestatario della fattura, imponibile e IVA, ospiti e motivo della rappresentanza. Formato per Excel italiano (separatore ;).</p>
+        <p><b id="cN">${list().length}</b> pratiche nel periodo.</p>`;
+      foot().innerHTML = `<span class="spacer"></span><button class="btn primary" id="cGo">Scarica CSV</button>`;
+      const upd = () => { $('#cN', m.sheet).textContent = list().length; };
+      $('#cSoc', m.sheet).onchange = e => { sc.soc = e.target.value; upd(); };
+      $('#cDal', m.sheet).onchange = e => { sc.dal = e.target.value; upd(); };
+      $('#cAl', m.sheet).onchange = e => { sc.al = e.target.value; upd(); };
+      $('#cGo', m.sheet).onclick = () => exportCSV(list(), `Rimborsi ${sc.dal} ${sc.al}${sc.soc ? ' ' + socById(sc.soc).nome : ''}.csv`);
+    }
+  };
+  m.sheet.addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; draw(); } });
+  draw();
+}
+async function creaInvio(socId, ids, silent = false) {
+  busy('Preparo l\'invio…');
+  const nums = Object.keys(S.idx.invii).map(k => +k.slice(1) || 0);
+  const id = 'I' + String(Math.max(0, ...nums) + 1).padStart(3, '0');
+  const fresh = [];
+  for (const pid of ids) {
+    const p = S.idx.pratiche[pid];
+    const r = await fs.readJSON(`pratiche/${p.folder}/pratica.json`);
+    const d = r ? Object.assign(r.data, {folder: p.folder}) : clone(p);
+    if (d.stato === 'inviata') throw new Error(`${pid} risulta già inviata (${d.invioId}). Ricarica i dati.`);
+    const k = kmInfo(d);
+    Object.assign(d, {stato: 'inviata', invioId: id, tariffaCongelata: d.tipo === 'trasferta' && d.veicoloId && +d.km ? k.tariffa : null, updatedAt: new Date().toISOString()});
+    fresh.push({d, etag: r?.etag});
+  }
+  const prat = fresh.map(x => x.d), soc = socById(socId);
+  const months = [...new Set(prat.map(p => p.data.slice(0, 7)))].sort();
+  const per = months.length > 1 ? months[0] + '_' + months[months.length - 1] : months[0];
+  const grp = {T: 0, S: 0, R: 0}; let tot = 0;
+  for (const p of prat) { const t = totals(p); tot = r2(tot + t.tot); for (const g in grp) grp[g] = r2(grp[g] + t.grp[g]); }
+  const inv = {id, data: today(), societaId: socId, pratiche: ids, totale: tot, gruppi: grp, pdf: safeName(`${id} - ${per} - ${soc?.nome || ''}`) + '.pdf', createdAt: new Date().toISOString()};
+  busy('Genero il PDF…');
+  const bytes = await buildPdf(inv, prat);
+  const blob = new Blob([bytes], {type: 'application/pdf'});
+  busy('Salvo l\'invio…');
+  await fs.putBlob('invii/' + inv.pdf, blob);
+  await fs.writeJSON(`invii/${id}.json`, inv);
+  for (const {d, etag} of fresh) {
+    const base = `pratiche/${d.folder}/`;
+    await fs.writeJSON(base + 'pratica.json', d, etag).catch(e => { if (e.conflict) throw new Error(`${d.id} è stata modificata altrove durante l'invio: ricarica e ripeti.`); throw e; });
+    await fs.putBlob(base + 'riepilogo.txt', new Blob([riepilogoTxt(d)], {type: 'text/plain;charset=utf-8'})).catch(() => {});
+  }
+  await updateIndex(idx => { for (const {d} of fresh) idx.pratiche[d.id] = d; idx.invii[id] = inv; });
+  busy(null); refreshMain(); if (!silent) { download(blob, inv.pdf); toast(`Invio ${id} creato: ${ids.length} pratiche, ${fmtE(tot)} €`); }
+}
+async function annullaInvio(id) {
+  busy('Annullo l\'invio…');
+  const inv = clone(S.idx.invii[id]);
+  for (const pid of inv.pratiche) {
+    const p = S.idx.pratiche[pid]; if (!p) continue;
+    const r = await fs.readJSON(`pratiche/${p.folder}/pratica.json`);
+    const d = r ? Object.assign(r.data, {folder: p.folder}) : clone(p);
+    if (d.invioId !== id) continue;
+    Object.assign(d, {stato: 'bozza', invioId: null, tariffaCongelata: null, updatedAt: new Date().toISOString()});
+    await fs.writeJSON(`pratiche/${d.folder}/pratica.json`, d, r?.etag);
+    await updateIndex(idx => { idx.pratiche[d.id] = d; });
+  }
+  Object.assign(inv, {annullato: true, annullatoIl: today()});
+  await fs.writeJSON(`invii/${id}.json`, inv);
+  await updateIndex(idx => { idx.invii[id] = inv; });
+  busy(null); refreshMain(); toast(`Invio ${id} annullato`);
+}
+function exportCSV(list, name) {
+  const N = n => n == null || n === '' ? '' : r2(n).toFixed(2).replace('.', ',');
+  const rows = [['Invio','Pratica','Stato','Data','Data fine','Società','Tipo pratica','Luogo / descrizione','Percorso','Motivo','Controparte','Deal','Natura','Categoria','Descrizione spesa','Data spesa','Km','Tariffa €/km','Importo €','Pagamento','Tracciabile','Documento','Imponibile €','IVA €','Ospiti','Motivo rappresentanza','Documenti']];
+  for (const p of list.sort((a, b) => a.data.localeCompare(b.data))) {
+    const soc = socById(p.societaId)?.nome || '', head = [p.invioId || '', p.id, p.stato, p.data, p.dataFine || '', soc, p.tipo === 'trasferta' ? 'Trasferta' : 'Spesa singola', p.luogo, p.percorso || '', p.motivo, p.controparte, p.deal];
+    const k = kmInfo(p);
+    if (k.importo) rows.push([...head, GROUPS.T, 'Rimborso chilometrico', vehById(p.veicoloId)?.nome || '', p.data, p.km, String(k.tariffa).replace('.', ','), N(k.importo), '', '', '', '', '', '', '', '']);
+    for (const s of p.spese || []) rows.push([...head, GROUPS[gruppoOf(s)], catOf(s.categoria).label, s.descrizione, s.data, '', '', N(s.importo), PAGAMENTI[s.pagamento] || '', TRACCIABILI.has(s.pagamento) ? 'sì' : 'no', INTESTAZIONI[s.fatturaIntestataA] || '', N(s.imponibile), N(s.iva), s.ospiti || '', s.motivoRappr || '', (s.ricevute || []).join(' | ')]);
+  }
+  const cell = v => { const s = String(v ?? ''); return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  download(new Blob(['﻿' + rows.map(r => r.map(cell).join(';')).join('\r\n')], {type: 'text/csv;charset=utf-8'}), safeName(name.replace(/\.csv$/, '')) + '.csv');
+}
+
+/* ---------------- PDF (pdf-lib) ---------------- */
+let pdfLibP;
+function loadPdfLib() {
+  if (window.PDFLib) return Promise.resolve();
+  return pdfLibP ||= new Promise((res, rej) => { const s = document.createElement('script'); s.src = PDFLIB_URL; s.onload = res; s.onerror = () => { pdfLibP = null; rej(new Error('Impossibile caricare la libreria PDF: serve la connessione.')); }; document.head.append(s); });
+}
+const WINANSI_EXTRA = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ';
+const san = s => String(s ?? '').replace(/→|->/g, '>').replace(/[\t]/g, ' ').replace(/./g, c => { const n = c.charCodeAt(0); return (n >= 32 && n <= 126) || (n >= 160 && n <= 255) || WINANSI_EXTRA.includes(c) ? c : '?'; });
+async function buildPdf(inv, prat, opts = {}) {
+  await loadPdfLib();
+  const {PDFDocument, StandardFonts, rgb} = PDFLib;
+  const doc = await PDFDocument.create();
+  const soc = socById(inv.societaId);
+  doc.setTitle(san(`Nota spese ${inv.id} - ${soc?.nome || ''}`)); doc.setAuthor(san(S.cfg.richiedente)); doc.setCreator('Rimborsi trasferte ' + APP_VERSION);
+  const F = await doc.embedFont(StandardFonts.Helvetica), FB = await doc.embedFont(StandardFonts.HelveticaBold);
+  const W = 595.28, H = 841.89, M = 40, CW = W - 2 * M;
+  const ink = rgb(.11, .11, .1), mute = rgb(.43, .42, .39), lineC = rgb(.84, .83, .79), fillC = rgb(.95, .945, .925), accent = rgb(.14, .31, .85);
+  let page, y;
+  const newPage = () => { page = doc.addPage([W, H]); y = H - M; };
+  const tw = (s, size, b) => (b ? FB : F).widthOfTextAtSize(san(s), size);
+  const T = (s, x, yy, o = {}) => page.drawText(san(s), {x, y: yy, size: o.size || 9, font: o.b ? FB : F, color: o.c || ink});
+  const wrap = (s, width, size, b) => {
+    const out = [];
+    for (const para of san(s).split('\n')) {
+      let line = '';
+      for (const w of para.split(' ')) {
+        const tryL = line ? line + ' ' + w : w;
+        if (tw(tryL, size, b) <= width) { line = tryL; continue; }
+        if (line) out.push(line);
+        let ww = w; while (tw(ww, size, b) > width && ww.length > 1) { let k = ww.length; while (k > 1 && tw(ww.slice(0, k), size, b) > width) k--; out.push(ww.slice(0, k)); ww = ww.slice(k); }
+        line = ww;
+      }
+      out.push(line);
+    }
+    return out;
+  };
+  const ensure = h => { if (y - h < M + 24) { newPage(); return true; } return false; };
+  const para = (s, o = {}) => { const size = o.size || 9; for (const l of wrap(s, o.w || CW, size, o.b)) { ensure(size + 4); T(l, o.x || M, y - size, {size, b: o.b, c: o.c}); y -= size + 3.5; } };
+  const table = (cols, rows, o = {}) => {
+    const size = 8.3, pad = 4, lh = 10.5;
+    const head = () => { page.drawRectangle({x: M, y: y - lh - pad * 1.6, width: CW, height: lh + pad * 1.6, color: fillC}); let x = M; for (const c of cols) { const tx = c.a === 'r' ? x + c.w - pad - tw(c.h, size, true) : x + pad; T(c.h, tx, y - lh - 1, {size, b: true, c: mute}); x += c.w; } y -= lh + pad * 1.6 + 2; };
+    ensure(lh * 4); head();
+    rows.forEach((r, ri) => {
+      const b = o.bold?.has(ri);
+      const cells = r.map((v, i) => wrap(String(v ?? ''), cols[i].w - pad * 2, size, b));
+      const rh = Math.max(...cells.map(c => c.length)) * lh + pad;
+      if (ensure(rh + 2)) head();
+      let x = M;
+      cells.forEach((lines, i) => { const c = cols[i]; lines.forEach((ln, k) => { const tx = c.a === 'r' ? x + c.w - pad - tw(ln, size, b) : x + pad; T(ln, tx, y - lh * (k + 1) + 1, {size, b}); }); x += c.w; });
+      y -= rh; page.drawLine({start: {x: M, y}, end: {x: W - M, y}, thickness: .5, color: lineC});
+    });
+    y -= 8;
+  };
+  const kv = pairs => { for (const [k, v] of pairs) { if (!v) continue; const lines = wrap(v, CW - 110, 9); ensure(lines.length * 12.5 + 2); T(k, M, y - 9, {size: 9, c: mute}); lines.forEach((l, i) => T(l, M + 110, y - 9 - i * 12.5, {size: 9})); y -= lines.length * 12.5 + 2; } y -= 4; };
+  const h2 = s => { ensure(30); y -= 6; T(s, M, y - 11, {size: 11, b: true}); y -= 18; };
+
+  // --- pagina 1: frontespizio ed elenco ---
+  newPage();
+  T('NOTA SPESE', M, y - 10, {size: 9, b: true, c: accent});
+  const idTxt = opts.preview ? 'ANTEPRIMA - non inviata' : `Invio ${inv.id} del ${fmtD(inv.data)}`;
+  T(idTxt, W - M - tw(idTxt, 9, true), y - 10, {size: 9, b: true, c: opts.preview ? rgb(.7, .1, .1) : mute});
+  y -= 34; T(soc?.nome || '', M, y, {size: 20, b: true}); y -= 22;
+  const dates = prat.map(p => p.data).concat(prat.map(p => p.dataFine).filter(Boolean)).sort();
+  kv([['Richiedente', S.cfg.richiedente], ['Società', soc?.nome], ['Periodo', `${fmtD(dates[0])} - ${fmtD(dates[dates.length - 1])}`], ['Pratiche', String(prat.length)]]);
+  const tots = prat.map(p => totals(p)); const tot = r2(tots.reduce((a, t) => a + t.tot, 0));
+  h2('Elenco pratiche');
+  table([{h: 'Pratica', w: 50}, {h: 'Data', w: 58}, {h: 'Tipo', w: 52}, {h: 'Luogo / descrizione', w: 140}, {h: 'Motivo', w: 113}, {h: 'Km', w: 38, a: 'r'}, {h: 'Totale EUR', w: 60, a: 'r'}],
+    prat.map((p, i) => [p.id, fmtD(p.data) + (p.dataFine && p.dataFine !== p.data ? '\n' + fmtD(p.dataFine) : ''), p.tipo === 'trasferta' ? 'Trasferta' : 'Spesa', p.luogo, [p.motivo, p.controparte].filter(Boolean).join(' - '), +p.km ? fmtK(p.km) : '', fmtE(tots[i].tot)])
+      .concat([['', '', '', 'TOTALE', '', fmtK(prat.reduce((a, p) => a + (+p.km || 0), 0)), fmtE(tot)]]), {bold: new Set([prat.length])});
+  const sumG = {T: 0, S: 0, R: 0}, kmTot = r2(tots.reduce((a, t) => a + t.km.importo, 0)); let viagg = 0, vitto = 0, oltre = 0;
+  prat.forEach((p, i) => { const t = tots[i]; for (const g in sumG) sumG[g] = r2(sumG[g] + t.grp[g]); oltre = r2(oltre + t.oltreTetto); for (const s of p.spese || []) if (gruppoOf(s) === 'T') { if (catOf(s.categoria).tetto) vitto = r2(vitto + s.importo); else viagg = r2(viagg + s.importo); } });
+  h2('Riepilogo per natura (per la contabilità)');
+  table([{h: 'Natura', w: 120}, {h: 'Voce', w: 291}, {h: 'Importo EUR', w: 100, a: 'r'}], [
+    ['Trasferta', 'Rimborso chilometrico (tariffe ACI)', fmtE(kmTot)],
+    ['Trasferta', 'Pedaggi, parcheggi, treni, aerei, taxi, mezzi e altre spese di viaggio', fmtE(viagg)],
+    ['Trasferta', 'Vitto e alloggio' + (oltre > 0 ? ` (di cui ${fmtE(oltre)} oltre il tetto deducibile)` : ''), fmtE(vitto)],
+    ['Costo società', 'Spese della società anticipate (conferenze, corsi, software, altro)', fmtE(sumG.S)],
+    ['Rappresentanza', 'Spese di rappresentanza', fmtE(sumG.R)],
+    ['', 'TOTALE DA RIMBORSARE', fmtE(tot)]
+  ], {bold: new Set([5])});
+  para('Le spese di trasferta riguardano viaggi fuori dal comune della sede, documentate dalle ricevute allegate. Per le spese della società anticipate è indicato l\'intestatario della fattura; per la rappresentanza sono indicati ospiti e motivo.', {size: 8, c: mute});
+  y -= 30; ensure(60);
+  T('Il richiedente', M, y, {size: 9, c: mute}); T('Approvato da', M + CW / 2, y, {size: 9, c: mute}); y -= 30;
+  page.drawLine({start: {x: M, y}, end: {x: M + CW / 2 - 30, y}, thickness: .6, color: lineC}); page.drawLine({start: {x: M + CW / 2, y}, end: {x: W - M, y}, thickness: .6, color: lineC});
+  T(S.cfg.richiedente, M, y - 12, {size: 8.5, c: mute}); T('Data', M + CW / 2, y - 12, {size: 8.5, c: mute});
+
+  // --- sezioni per pratica + ricevute ---
+  const receipts = [];
+  for (const [i, p] of prat.entries()) {
+    const t = tots[i], v = vehById(p.veicoloId);
+    newPage();
+    T(`${p.id} - ${p.tipo === 'trasferta' ? 'TRASFERTA' : 'SPESA SINGOLA'}`, M, y - 10, {size: 9, b: true, c: accent});
+    const right = fmtE(t.tot) + ' EUR'; T(right, W - M - tw(right, 14, true), y - 12, {size: 14, b: true});
+    y -= 32; for (const l of wrap(p.luogo || '', CW - 120, 16, true)) { T(l, M, y, {size: 16, b: true}); y -= 19; } y -= 4;
+    kv([['Data', fmtD(p.data) + (p.dataFine && p.dataFine !== p.data ? ' - ' + fmtD(p.dataFine) : '')], ['Percorso', p.percorso], ['Motivo', p.motivo], ['Controparte', p.controparte], ['Deal / progetto', p.deal],
+      ['Veicolo', p.tipo === 'trasferta' && v ? `${v.nome}${v.targa ? ' - targa ' + v.targa : ''}` : ''], ['Estero', p.estero ? 'Sì' : ''], ['Note', p.note]]);
+    const rows = [];
+    if (t.km.importo) rows.push([fmtD(p.data), 'Rimborso km', 'Trasferta', `${fmtK(p.km)} km x ${fmtT(t.km.tariffa)} EUR/km (ACI ${yearOf(p.data)})`, '', '', fmtE(t.km.importo)]);
+    const docNum = new Map();
+    for (const s of p.spese || []) {
+      const g = gruppoOf(s), refs = (s.ricevute || []).map(n => { if (!docNum.has(n)) { docNum.set(n, docNum.size + 1); receipts.push({p, name: n, n: docNum.size}); } return '#' + docNum.get(n); }).join(' ');
+      const desc = [s.descrizione, g !== 'T' ? INTESTAZIONI[s.fatturaIntestataA] : '', s.imponibile ? `imp. ${fmtE(s.imponibile)} + IVA ${fmtE(s.iva || 0)}` : '', g === 'R' ? `Ospiti: ${s.ospiti}. Motivo: ${s.motivoRappr}` : ''].filter(Boolean).join('\n');
+      rows.push([fmtD(s.data), catOf(s.categoria).label, GROUPS[g], desc, PAGAMENTI[s.pagamento] || '', refs || 'manca', fmtE(s.importo)]);
+    }
+    for (const n of p.allegati || []) if (!docNum.has(n)) { docNum.set(n, docNum.size + 1); receipts.push({p, name: n, n: docNum.size, allegato: true}); }
+    rows.push(['', '', '', 'TOTALE PRATICA', '', '', fmtE(t.tot)]);
+    h2('Dettaglio spese');
+    table([{h: 'Data', w: 50}, {h: 'Categoria', w: 82}, {h: 'Natura', w: 74}, {h: 'Descrizione', w: 145}, {h: 'Pagamento', w: 52}, {h: 'Doc.', w: 44}, {h: 'EUR', w: 64, a: 'r'}], rows, {bold: new Set([rows.length - 1])});
+    if (t.oltreTetto > 0) para(`Vitto e alloggio oltre il tetto deducibile per la società: ${fmtE(t.oltreTetto)} EUR.`, {size: 8, c: mute});
+    if (docNum.size) para('Documenti allegati nelle pagine seguenti: ' + [...docNum].map(([n, k]) => `#${k} ${n}`).join('; '), {size: 8, c: mute});
+
+    for (const r of receipts.splice(0)) {
+      const label = `${p.id} - documento #${r.n}${r.allegato ? ' (allegato)' : ''} - ${r.name}`;
+      let blob = null;
+      try { blob = opts.blobs?.get(r.name) || await fs.getBlob(`pratiche/${p.folder}/${r.name}`); } catch {}
+      const bytes = blob ? new Uint8Array(await blob.arrayBuffer()) : null;
+      const notePage = msg => { newPage(); T(label, M, y - 9, {size: 8.5, b: true, c: mute}); y -= 30; para(msg, {size: 10}); };
+      if (!bytes) { notePage('Documento non disponibile nell\'archivio.'); continue; }
+      if (isPdf(blob, r.name)) {
+        try {
+          const src = await PDFDocument.load(bytes, {ignoreEncryption: true});
+          const pages = await doc.copyPages(src, src.getPageIndices());
+          pages.forEach((pg, k) => {
+            doc.addPage(pg); const {width, height} = pg.getSize();
+            const lab = san(label + (pages.length > 1 ? ` (pag. ${k + 1}/${pages.length})` : ''));
+            const lw = Math.min(width - 20, F.widthOfTextAtSize(lab, 7.5) + 10);
+            pg.drawRectangle({x: 8, y: height - 19, width: lw, height: 13, color: rgb(1, 1, 1), opacity: .85});
+            pg.drawText(lab, {x: 13, y: height - 15.5, size: 7.5, font: F, color: mute});
+          });
+        } catch { notePage('PDF non incorporabile (protetto o danneggiato): vedi il file originale nella cartella della pratica.'); }
+      } else if (isImg(blob, r.name)) {
+        try {
+          const img = /\.png$/i.test(r.name) || blob.type === 'image/png' ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
+          newPage(); T(label, M, y - 9, {size: 8.5, b: true, c: mute}); y -= 22;
+          const sc = Math.min(CW / img.width, (y - M - 10) / img.height, 2);
+          const w = img.width * sc, h = img.height * sc;
+          page.drawImage(img, {x: M + (CW - w) / 2, y: y - h, width: w, height: h});
+        } catch { notePage('Immagine in formato non supportato nel PDF: vedi il file originale nella cartella della pratica.'); }
+      } else notePage('Documento in formato non incorporabile: vedi il file originale nella cartella della pratica.');
+    }
+  }
+  const pages = doc.getPages(), n = pages.length;
+  pages.forEach((pg, i) => {
+    const {width} = pg.getSize(); const f = san(`${soc?.nome || ''} - ${opts.preview ? 'Anteprima' : 'Invio ' + inv.id} - pag. ${i + 1}/${n}`);
+    pg.drawText(f, {x: width - 28 - F.widthOfTextAtSize(f, 7.5), y: 16, size: 7.5, font: F, color: mute});
+  });
+  return doc.save();
+}
+
+/* =========================================================
+   IMPOSTAZIONI
+   ========================================================= */
+function openSettings(tab = 'generale') {
+  let cfg = clone(S.cfg);
+  const m = openModal(`<div class="sheet-head"><div><div class="eyebrow">Impostazioni</div><h2>Configurazione</h2></div><button class="icon-btn" data-act="close">${ICON.x}</button></div>
+    <div class="sheet-body"><div class="tabs">${[['generale','Generale'],['societa','Società'],['veicoli','Veicoli'],['tratte','Tratte frequenti'],['incassi','Incassi'],['archivio','Archivio']].map(([k, l]) => `<button data-tab="${k}">${l}</button>`).join('')}</div><div id="sBody"></div></div>
+    <div class="sheet-foot" id="sFoot"></div>`, {cls: 'wide', onClose: () => JSON.stringify(cfg) === JSON.stringify(S.cfg) || confirm('Chiudere senza salvare le modifiche alla configurazione?')});
+  const body = () => $('#sBody', m.sheet), foot = () => $('#sFoot', m.sheet);
+  const saveBtn = `<span class="spacer"></span><button class="btn" data-act="close">Chiudi</button><button class="btn primary" id="sSave">Salva</button>`;
+  const bindSave = () => { const b = $('#sSave', m.sheet); if (b) b.onclick = () => guard(async () => {
+    for (const v of cfg.veicoli) v.tariffe = v.tariffe.filter(t => t.anno).map(t => ({anno: +t.anno, euroKm: t.euroKm === '' || t.euroKm == null ? null : +t.euroKm, fonte: t.fonte || ''}));
+    cfg.tratte = cfg.tratte.filter(t => t.da && t.a && +t.km > 0).map(t => Object.assign(t, {km: +t.km}));
+    if (cfg.societa.some(s => !s.nome.trim())) return toast('Ogni società deve avere un nome.', true);
+    busy('Salvo…'); await saveConfig(cfg); cfg = clone(S.cfg); busy(null); refreshMain(); draw(); toast('Impostazioni salvate');
+  }); };
+  const draw = () => {
+    $$('.tabs button', m.sheet).forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+    const B = body();
+    if (tab === 'generale') {
+      B.innerHTML = `<div class="fgrid">
+        <label class="fld s6"><span>Richiedente (compare nelle note spese)</span><input data-c="richiedente" value="${esc(cfg.richiedente)}"></label><span class="fld s6"></span>
+        <label class="fld s3 half"><span>Tetto vitto+alloggio Italia €/giorno</span><input type="number" step="0.01" data-c="parametri.tettoItalia" value="${cfg.parametri.tettoItalia}"></label>
+        <label class="fld s3 half"><span>Tetto estero €/giorno</span><input type="number" step="0.01" data-c="parametri.tettoEstero" value="${cfg.parametri.tettoEstero}"></label>
+        </div>
+        <div class="card" style="margin-top:16px"><h3>AI — su questo dispositivo</h3>
+        <div class="fgrid"><label class="fld s8"><span>Chiave API Anthropic</span><input id="sKey" type="password" value="${esc(dev.apiKey)}" placeholder="sk-ant-…" autocomplete="off"></label>
+        <label class="fld s4"><span>Modello</span><input id="sModel" value="${esc(dev.model || DEFAULT_MODEL)}"></label></div>
+        <p class="small muted">La chiave resta solo in questo browser e non viene salvata su OneDrive. Va inserita su ogni dispositivo.</p>
+        <button class="btn sm" id="sKeySave">Salva chiave</button> <button class="btn sm" id="sKeyTest">Prova la chiave</button> <span class="small" id="sKeyRes"></span></div>`;
+      foot().innerHTML = saveBtn; bindSave();
+      $('#sKeySave', m.sheet).onclick = () => { dev.apiKey = $('#sKey', m.sheet).value.trim(); dev.model = $('#sModel', m.sheet).value.trim() || DEFAULT_MODEL; saveDev(); toast('Chiave salvata su questo dispositivo'); };
+      $('#sKeyTest', m.sheet).onclick = async () => {
+        dev.apiKey = $('#sKey', m.sheet).value.trim(); dev.model = $('#sModel', m.sheet).value.trim() || DEFAULT_MODEL; saveDev();
+        const r = $('#sKeyRes', m.sheet); r.innerHTML = '<span class="spin" style="width:12px;height:12px;vertical-align:-2px"></span>';
+        try { const j = await claude([{type: 'text', text: 'Rispondi con {"ok":true}'}], 'Rispondi solo con JSON.', 20); r.textContent = j.ok ? '✓ Funziona' : 'Risposta inattesa'; r.style.color = 'var(--ok)'; }
+        catch (e) { r.textContent = errMsg(e); r.style.color = 'var(--bad)'; }
+      };
+    } else if (tab === 'societa') {
+      B.innerHTML = `<table class="mini"><thead><tr><th>Nome</th><th>Comune della sede</th><th>Rimborsa dal</th><th style="width:60px">Colore</th><th style="width:40px"></th></tr></thead><tbody>
+        ${cfg.societa.map((s, i) => `<tr><td><input data-c="societa.${i}.nome" value="${esc(s.nome)}"></td><td><input data-c="societa.${i}.comuneSede" value="${esc(s.comuneSede)}" placeholder="es. Milano"></td><td><input type="date" data-c="societa.${i}.attivaDal" value="${esc(s.attivaDal)}"></td><td><input type="color" data-c="societa.${i}.colore" value="${esc(s.colore || '#2f6fd0')}" style="padding:2px;height:30px"></td>
+          <td>${pratiche().some(p => p.societaId === s.id) ? '' : `<button class="icon-btn" data-del="societa.${i}">${ICON.trash}</button>`}</td></tr>`).join('')}</tbody></table>
+        <button class="btn sm" style="margin-top:10px" data-add="societa">+ Aggiungi società</button>
+        <p class="small muted">"Comune della sede" serve per l'avviso su vitto e alloggio nel comune della sede. "Rimborsa dal" blocca le pratiche precedenti (per Delos: data di iscrizione al Registro Imprese).</p>`;
+      foot().innerHTML = saveBtn; bindSave();
+    } else if (tab === 'veicoli') {
+      B.innerHTML = cfg.veicoli.map((v, i) => `<div class="card"><div class="fgrid">
+          <label class="fld s6"><span>Veicolo</span><input data-c="veicoli.${i}.nome" value="${esc(v.nome)}"></label>
+          <label class="fld s3"><span>Targa</span><input data-c="veicoli.${i}.targa" value="${esc(v.targa)}"></label>
+          <div class="fld s3" style="align-items:flex-end;justify-content:flex-end">${pratiche().some(p => p.veicoloId === v.id) ? '' : `<button class="btn sm danger" data-del="veicoli.${i}">Elimina veicolo</button>`}</div></div>
+          <table class="mini" style="margin-top:10px"><thead><tr><th style="width:90px">Anno</th><th style="width:140px">€/km ACI</th><th>Fonte</th><th style="width:40px"></th></tr></thead><tbody>
+          ${v.tariffe.map((t, k) => `<tr><td><input type="number" data-c="veicoli.${i}.tariffe.${k}.anno" value="${esc(t.anno)}"></td><td><input type="number" step="0.0001" data-c="veicoli.${i}.tariffe.${k}.euroKm" value="${esc(t.euroKm ?? '')}"></td><td><input data-c="veicoli.${i}.tariffe.${k}.fonte" value="${esc(t.fonte)}"></td><td><button class="icon-btn" data-del="veicoli.${i}.tariffe.${k}">${ICON.trash}</button></td></tr>`).join('')}
+          </tbody></table><button class="btn sm" style="margin-top:8px" data-add="veicoli.${i}.tariffe">+ Tariffa anno</button></div>`).join('') +
+        `<button class="btn sm" data-add="veicoli">+ Aggiungi veicolo</button><p class="small muted">Le pratiche inviate mantengono la tariffa con cui sono state inviate.</p>`;
+      foot().innerHTML = saveBtn; bindSave();
+    } else if (tab === 'tratte') {
+      B.innerHTML = `<table class="mini"><thead><tr><th>Da</th><th>A</th><th style="width:130px">Km sola andata</th><th style="width:40px"></th></tr></thead><tbody>
+        ${cfg.tratte.map((t, i) => `<tr><td><input data-c="tratte.${i}.da" value="${esc(t.da)}"></td><td><input data-c="tratte.${i}.a" value="${esc(t.a)}"></td><td><input type="number" data-c="tratte.${i}.km" value="${esc(t.km)}"></td><td><button class="icon-btn" data-del="tratte.${i}">${ICON.trash}</button></td></tr>`).join('') || '<tr><td colspan="4" class="muted small">Nessuna tratta. Si aggiungono anche dalla scheda trasferta con "Salva come tratta frequente".</td></tr>'}
+        </tbody></table><button class="btn sm" style="margin-top:10px" data-add="tratte">+ Aggiungi tratta</button>
+        <p class="small muted">L'AI usa queste distanze invece di stimarle: più tratte salvi, meno inventa.</p>`;
+      foot().innerHTML = saveBtn; bindSave();
+    } else if (tab === 'incassi') {
+      const list = [...S.pag.pagamenti].sort((a, b) => b.data.localeCompare(a.data));
+      B.innerHTML = list.length ? `<table class="mini"><thead><tr><th>Data</th><th>Società</th><th>Riferimento</th><th class="num">Importo €</th><th style="width:40px"></th></tr></thead><tbody>
+        ${list.map(p => `<tr><td>${fmtD(p.data)}</td><td>${esc(socById(p.societaId)?.nome || '')}</td><td>${esc(p.riferimento)}</td><td class="num">${fmtE(p.importo)}</td><td><button class="icon-btn" data-delpag="${esc(p.id)}">${ICON.trash}</button></td></tr>`).join('')}</tbody></table>`
+        : '<div class="empty">Nessun incasso registrato.</div>';
+      foot().innerHTML = `<button class="btn" id="sAddPag">+ Registra incasso</button><span class="spacer"></span><button class="btn" data-act="close">Chiudi</button>`;
+      $('#sAddPag', m.sheet).onclick = () => openPagamento(S.cfg.societa[0]?.id);
+      $$('[data-delpag]', m.sheet).forEach(b => b.onclick = () => { if (!confirm('Eliminare questo incasso?')) return; guard(async () => { await updatePag(pg => { pg.pagamenti = pg.pagamenti.filter(x => x.id !== b.dataset.delpag); }); refreshMain(); draw(); }); });
+    } else if (tab === 'archivio') {
+      const od = fs.kind === 'onedrive';
+      B.innerHTML = `<div class="card"><h3>Archivio attuale</h3>
+        ${od ? `<p>OneDrive di <b>${esc(dev.account || 'account Microsoft')}</b><br>Cartella: <code>/${esc(dev.root)}</code></p>
+          <p style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="aFolder">Cambia cartella</button><button class="btn sm" id="aRebuild">Ricostruisci indice dalle cartelle</button><button class="btn sm danger" id="aLogout">Esci da Microsoft</button></p>
+          <p class="small muted">Ogni pratica è una cartella in <code>pratiche/</code> con <code>pratica.json</code>, le ricevute e un <code>riepilogo.txt</code> leggibile; i PDF inviati sono in <code>invii/</code>. "Ricostruisci indice" rilegge tutte le cartelle: usalo se hai spostato o modificato file a mano.</p>`
+        : `<p>Dati salvati <b>solo in questo browser</b> (modalità di prova).</p>
+          <p style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="aDemo">Carica dati demo</button><button class="btn sm danger" id="aWipe">Cancella tutti i dati locali</button></p>`}
+        </div>
+        <div class="card"><h3>Collegamento OneDrive</h3>
+        <div class="fgrid"><label class="fld s8"><span>Application (client) ID</span><input id="aClient" value="${esc(dev.clientId)}" autocomplete="off"></label></div>
+        <p class="small muted">Redirect URI da registrare su Azure (piattaforma SPA): <code>${esc(redirectUri())}</code></p>
+        <button class="btn sm ${od ? '' : 'primary'}" id="aLogin">${od ? 'Accedi di nuovo' : 'Passa a OneDrive'}</button>
+        ${!od ? '<p class="small muted">Passando a OneDrive i dati di prova locali non vengono copiati.</p>' : ''}</div>
+        <p class="small muted">Versione ${APP_VERSION}</p>`;
+      foot().innerHTML = `<span class="spacer"></span><button class="btn" data-act="close">Chiudi</button>`;
+      $('#aLogin', m.sheet).onclick = () => guard(async () => { dev.clientId = $('#aClient', m.sheet).value.trim(); saveDev(); await msLogin(); });
+      if (od) {
+        $('#aFolder', m.sheet).onclick = () => { m.close(true); pickFolder(); };
+        $('#aRebuild', m.sheet).onclick = () => guard(async () => { busy('Rileggo le cartelle…'); await rebuildIndex(); busy(null); refreshMain(); toast(`Indice ricostruito: ${pratiche().length} pratiche`); });
+        $('#aLogout', m.sheet).onclick = () => { if (!confirm('Uscire da Microsoft su questo dispositivo?')) return; tok.clear(); dev.mode = null; dev.root = ''; saveDev(); location.reload(); };
+      } else {
+        $('#aDemo', m.sheet).onclick = () => guard(async () => { busy('Creo i dati demo…'); await loadDemo(); busy(null); m.close(true); refreshMain(); toast('Dati demo caricati'); });
+        $('#aWipe', m.sheet).onclick = () => { if (!confirm('Cancellare tutti i dati locali di questo browser?')) return; guard(async () => { await fs.wipe(); await loadAll(); m.close(true); refreshMain(); toast('Dati locali cancellati'); }); };
+      }
+    }
+  };
+  const path = (o, p) => { const k = p.split('.'); const last = k.pop(); for (const x of k) o = o[x]; return [o, last]; };
+  m.sheet.addEventListener('input', e => {
+    const t = e.target; if (!t.dataset.c) return; const [o, k] = path(cfg, t.dataset.c);
+    o[k] = t.type === 'number' ? (t.value === '' ? '' : +t.value) : t.value;
+  });
+  m.sheet.addEventListener('click', e => {
+    const tb = e.target.closest('[data-tab]'); if (tb) { tab = tb.dataset.tab; return draw(); }
+    const ad = e.target.closest('[data-add]'), dl = e.target.closest('[data-del]');
+    if (ad) {
+      const p = ad.dataset.add, [o, k] = path(cfg, p), arr = o[k];
+      if (p === 'societa') arr.push({id: uid(), nome: '', comuneSede: '', attivaDal: '', colore: '#5b6b7a'});
+      else if (p === 'veicoli') arr.push({id: uid(), nome: 'Nuovo veicolo', targa: '', tariffe: [{anno: yearOf(), euroKm: null, fonte: ''}]});
+      else if (p === 'tratte') arr.push({id: uid(), da: 'Casa', a: '', km: ''});
+      else arr.push({anno: yearOf(), euroKm: null, fonte: ''});
+      draw();
+    } else if (dl) { const ks = dl.dataset.del.split('.'), i = +ks.pop(), [o, k] = path(cfg, ks.join('.')); o[k].splice(i, 1); draw(); }
+  });
+  draw();
+}
+
+/* =========================================================
+   DATI DEMO (solo modalità locale)
+   ========================================================= */
+async function demoReceipt(lines) {
+  const c = document.createElement('canvas'); c.width = 420; c.height = 560; const g = c.getContext('2d');
+  g.fillStyle = '#fbfaf6'; g.fillRect(0, 0, c.width, c.height); g.fillStyle = '#222'; g.font = 'bold 22px monospace'; g.fillText(lines[0], 30, 60);
+  g.font = '17px monospace'; lines.slice(1).forEach((l, i) => g.fillText(l, 30, 110 + i * 32));
+  g.strokeStyle = '#bbb'; g.setLineDash([6, 6]); g.strokeRect(14, 14, c.width - 28, c.height - 28);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', .85));
+}
+async function loadDemo() {
+  if (fs.kind !== 'local') throw new Error('I dati demo sono disponibili solo in modalità locale.');
+  await fs.wipe(); await loadAll();
+  const cfg = defaultConfig();
+  cfg.tratte = [{id: 't1', da: 'Casa', a: 'Villanova sull\'Arda', km: 92}, {id: 't2', da: 'Casa', a: 'Roma', km: 575}, {id: 't3', da: 'Casa', a: 'Bologna', km: 215}];
+  const y = yearOf(), mm = n => String(n).padStart(2, '0');
+  const base = (m0) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - m0 - 1); return `${d.getFullYear()}-${mm(d.getMonth() + 1)}`; };
+  cfg.societa[0].comuneSede = 'Milano'; cfg.societa[0].attivaDal = base(2) + '-01'; cfg.societa[1].comuneSede = 'Milano';
+  await saveConfig(cfg);
+  const P = [
+    {tipo: 'trasferta', data: base(2) + '-08', luogo: 'Villanova sull\'Arda', percorso: 'Casa → Villanova sull\'Arda → Casa', km: 184, soc: 'delos', motivo: 'Visita stabilimento', controparte: 'Gobbi S.r.l.', deal: 'Gobbi',
+      spese: [['pedaggio', 14.6, 'telepass', 'Autostrada A1 Milano-Fiorenzuola A/R'], ['vitto', 23.5, 'carta', 'Trattoria del Borgo, pranzo']]},
+    {tipo: 'trasferta', data: base(2) + '-21', dataFine: base(2) + '-22', luogo: 'Roma', percorso: 'Casa → Roma → Casa', km: 1150, soc: 'delos', motivo: 'Incontro investitore', controparte: 'Fondo Xavaio', deal: 'Fundraising',
+      spese: [['pedaggio', 98.4, 'telepass', 'A1 Milano-Roma A/R'], ['alloggio', 165, 'carta', 'Hotel Artemide'], ['vitto', 42, 'carta', 'Cena'], ['parcheggio', 18, 'carta', 'Parcheggio Ludovisi']]},
+    {tipo: 'spesa', data: base(1) + '-03', luogo: 'Biglietto Italian Tech Week', soc: 'delos', motivo: 'Aggiornamento e networking', spese: [['conferenza', 290, 'carta', 'Italian Tech Week — pass 2 giorni', {fatturaIntestataA: 'societa', imponibile: 237.7, iva: 52.3}]]},
+    {tipo: 'trasferta', data: base(1) + '-14', luogo: 'Bologna', percorso: 'Casa → Bologna → Casa', km: 430, soc: 'emba', motivo: 'Due diligence', controparte: 'Mocerino S.p.A.', deal: 'Mocerino',
+      spese: [['pedaggio', 33.2, 'telepass', 'A1 Milano-Bologna A/R'], ['rappr_pasto', 186, 'carta', 'Osteria Bottega, cena', {ospiti: 'G. Mocerino, L. Ferri (Mocerino S.p.A.)', motivoRappr: 'Chiusura term sheet', fatturaIntestataA: 'societa'}]]},
+    {tipo: 'trasferta', data: base(0) + '-04', luogo: 'Villanova sull\'Arda', percorso: 'Casa → Villanova sull\'Arda → Casa', km: 184, soc: 'delos', motivo: 'Riunione avanzamento', controparte: 'Gobbi S.r.l.', deal: 'Gobbi',
+      spese: [['pedaggio', 14.6, 'telepass', 'A1 Milano-Fiorenzuola A/R'], ['vitto', 31, 'contanti', 'Bar Centrale, pranzo']]},
+    {tipo: 'spesa', data: base(0) + '-07', luogo: 'Cena con advisor a Milano', soc: 'delos', motivo: 'Strategia fundraising', spese: [['rappr_pasto', 124, 'carta', 'Ristorante Al Pont de Ferr', {ospiti: 'A. Conti (advisor)', motivoRappr: 'Strategia fundraising', fatturaIntestataA: 'societa'}]]},
+    {tipo: 'trasferta', data: base(0) + '-12', luogo: 'Roma', percorso: 'Casa → Roma → Casa', km: 1150, kmStimati: true, soc: 'emba', motivo: 'Comitato investimenti', controparte: 'LP meeting',
+      spese: [['treno_aereo', 0, 'carta', '']]}
+  ];
+  const idx = {schema: 1, pratiche: {}, invii: {}};
+  let n = 0;
+  for (const x of P) {
+    n++; const id = 'P' + String(n).padStart(4, '0');
+    const d = Object.assign(newPratica(x.tipo), {id, data: x.data, dataFine: x.dataFine || '', societaId: x.soc, luogo: x.luogo, percorso: x.percorso || '', km: x.km || 0, kmStimati: !!x.kmStimati,
+      veicoloId: x.tipo === 'trasferta' ? 'cayenne' : '', motivo: x.motivo, controparte: x.controparte || '', deal: x.deal || '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()});
+    d.spese = x.spese.filter(s => s[1] > 0).map(([cat, imp, pag, desc, extra]) => Object.assign(newSpesa(d), {categoria: cat, importo: imp, pagamento: pag, descrizione: desc}, extra || {}));
+    d.folder = folderName(d);
+    for (const s of d.spese) {
+      if (s.categoria === 'vitto' && s.pagamento === 'contanti') continue;
+      const name = uniqueName(d, spesaFileBase(s), '.jpg');
+      await fs.putBlob(`pratiche/${d.folder}/${name}`, await demoReceipt(['RICEVUTA DEMO', s.descrizione.slice(0, 30), fmtD(s.data), 'Totale EUR ' + fmtE(s.importo), PAGAMENTI[s.pagamento]]));
+      s.ricevute = [name];
+    }
+    await fs.writeJSON(`pratiche/${d.folder}/pratica.json`, d);
+    idx.pratiche[id] = d;
+  }
+  S.idx = idx; S.idxEtag = await fs.writeJSON('indice.json', idx);
+  // un invio già fatto per i primi due mesi di Delos, con incasso parziale
+  await creaInvio('delos', ['P0001', 'P0002'], true).catch(e => console.warn('Invio demo non creato:', e));
+  await updatePag(pg => { pg.pagamenti = [{id: uid(), societaId: 'delos', data: base(0) + '-02', importo: 900, riferimento: 'Bonifico demo'}]; });
+}
+
+boot();
+</script>
 </body>
 </html>
