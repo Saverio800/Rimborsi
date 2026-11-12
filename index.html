@@ -249,7 +249,7 @@ table.mini{width:100%;border-collapse:collapse;font-size:13px}
    Rimborsi trasferte — app personale single-file
    Archivio: OneDrive personale (Microsoft Graph) oppure locale (IndexedDB)
    ========================================================= */
-const APP_VERSION = '0.3.0';
+const APP_VERSION = '0.3.1';
 const ORS = 'https://api.heigit.org';   // api.openrouteservice.org è stato dismesso a novembre 2026
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const PDFLIB_URL = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
@@ -685,7 +685,7 @@ function checks(p, all = pratiche()) {
       else if (k.missing) err(`Manca la tariffa ACI ${k.anno} per ${v?.nome || 'il veicolo'} (Impostazioni → Veicoli).`);
       if (!(+s.km > 0)) err('Rimborso km: km mancanti.');
       if ((s.tappe || []).length < 2) warn('Rimborso km: indica almeno partenza e arrivo.');
-      if (s.kmFonte === 'stima') warn('Rimborso km: distanza stimata dall\'AI, usa "Calcola km" per il valore stradale.');
+      if (s.kmFonte === 'stima') warn('Rimborso km: distanza stimata dall\'AI. Premi "Calcola km" sulla riga del rimborso per il valore stradale.');
       if (s.veicoloId && +s.km > 0) {
         const dup = all.find(o => o.id !== p.id && o.societaId !== p.societaId && (o.spese || []).some(x => x.categoria === 'km' && x.veicoloId === s.veicoloId && (x.data || o.data) === (s.data || p.data)));
         if (dup) warn(`Stesso giorno e stesso veicolo anche in ${dup.id} (${socById(dup.societaId)?.nome || ''}): controlla il doppio conteggio dei km.`);
@@ -739,9 +739,19 @@ async function orsRoute(points) {
   return {tratti: (rt.segments || []).map(x => Math.round(x.distance * 10) / 10), totale: rt.summary.distance};
 }
 /* trova coordinate per un testo (indirizzo o nome di azienda): prima geocodifica, poi AI con ricerca web */
+function placeQueries(text) {
+  const clean = text.replace(/\([^)]*\)/g, ' ').replace(/casello( autostradale)?( di)?/ig, ' ').replace(/\s+/g, ' ').replace(/\s*,\s*/g, ', ').replace(/^[ ,]+|[ ,]+$/g, '');
+  const parts = clean.split(',').map(x => x.trim()).filter(x => x && !/^ital(ia|y)$/i.test(x));
+  const comune = parts.length ? parts[parts.length - 1].replace(/^\d{5}\s*/, '').replace(/\s+\(?[A-Z]{2}\)?$/, '') : '';
+  return [...new Set([text, clean, parts.slice(-2).join(', '), comune].filter(q => q && q.length > 1))];
+}
 async function findPlace(text, opt = {}) {
-  let res = await orsGeocode(text, opt);
-  if (!res.length && opt.italia && !/ital/i.test(text)) res = await orsGeocode(text + ', Italia', opt);
+  let res = [];
+  for (const q of placeQueries(text)) {
+    res = await orsGeocode(q, opt);
+    if (!res.length && opt.italia && !/ital/i.test(q)) res = await orsGeocode(q + ', Italia', opt);
+    if (res.length) break;
+  }
   if (res.length) return {...res[0], via: 'mappa'};
   if (!dev.apiKey) throw new Error(`Indirizzo non trovato: "${text}"${opt.italia ? ' in Italia' : ''}. Scrivi via, numero e comune.`);
   const ai = await aiFindAddress(text);
@@ -768,19 +778,26 @@ async function resolveTappe(s, opt = {}) {
           const f = await findPlace(q, opt); Object.assign(t, {lat: f.lat, lon: f.lon, indirizzo: f.label, trovato: f.label});
         }
       }
-    } catch (e) { throw new Error(`${tag}: ${errMsg(e)}`); }
-    if (opt.italia && !inItaly(t)) throw new Error(`${tag} è localizzata fuori Italia (${t.trovato || t.indirizzo}). Se la trasferta è all'estero spunta "Trasferta all'estero", altrimenti correggi l'indirizzo.`);
+      t.skip = false;
+    } catch (e) {
+      if (t.via) { t.skip = true; t.lat = t.lon = null; continue; }   // un punto di passaggio non trovato non blocca il calcolo
+      throw new Error(`${tag}: ${errMsg(e)}`);
+    }
+    if (opt.italia && !inItaly(t)) { if (t.via) { t.skip = true; continue; } throw new Error(`${tag} è localizzata fuori Italia (${t.trovato || t.indirizzo}). Se la trasferta è all'estero spunta "Trasferta all'estero", altrimenti correggi l'indirizzo.`); }
   }
   if (cfgChanged) await saveConfig(cfg).catch(() => {});
 }
 async function computeKm(s, p) {
   if ((s.tappe || []).length < 2) throw new Error('Servono almeno due tappe.');
   await resolveTappe(s, {italia: !p?.estero});
-  const pts = s.tappe.map(t => ({lat: t.lat, lon: t.lon})); if (s.ritorno) pts.push(pts[0]);
+  const incl = s.tappe.map((t, i) => i).filter(i => !s.tappe[i].skip);
+  if (incl.length < 2) throw new Error('Servono almeno due tappe localizzate.');
+  const pts = incl.map(i => ({lat: s.tappe[i].lat, lon: s.tappe[i].lon})); if (s.ritorno) pts.push(pts[0]);
   let r;
   try { r = await orsRoute(pts); }
-  catch (e) { throw new Error(errMsg(e) + ' Tappe localizzate: ' + s.tappe.map((t, i) => `${TL[i] || i + 1} = ${t.trovato || t.indirizzo || tappaNome(t)}`).join('; ')); }
-  s.tratti = r.tratti; s.km = Math.round(r.totale); s.kmFonte = 'mappa';
+  catch (e) { throw new Error(errMsg(e) + ' Tappe localizzate: ' + incl.map(i => `${TL[i] || i + 1} = ${s.tappe[i].trovato || s.tappe[i].indirizzo || tappaNome(s.tappe[i])}`).join('; ')); }
+  const tr = s.tappe.map(() => null); r.tratti.forEach((km, k) => { if (incl[k] != null) tr[incl[k]] = km; });
+  s.tratti = tr; s.km = Math.round(r.totale); s.kmFonte = 'mappa';
   if (s._ai) delete s._ai.km;
   return s;
 }
@@ -1048,16 +1065,20 @@ async function claude(content, system, maxTokens = 4096, opts = {}) {
     if (!r.ok) throw Object.assign(new Error('AI: ' + (j.error?.message || ('HTTP ' + r.status))), {status: r.status});
     return j;
   };
+  const parse = j => {
+    const blocks = j.content || [];
+    let last = -1; blocks.forEach((b, i) => { if (b.type !== 'text') last = i; });
+    const txt = blocks.slice(last + 1).filter(b => b.type === 'text').map(b => b.text).join('') || blocks.filter(b => b.type === 'text').map(b => b.text).join('');
+    const m = txt.match(/```(?:json)?\s*([\s\S]*?)```/); const s = m ? m[1] : txt;
+    const a = s.indexOf('{'), b = s.lastIndexOf('}');
+    if (a < 0 || b < a) throw new Error('Risposta AI non interpretabile.');
+    return JSON.parse(s.slice(a, b + 1));
+  };
   let j;
   try { j = await call(!!opts.web); }
-  catch (e) { if (opts.web && e.status === 400) j = await call(false); else throw e; }   // ricerca web non abilitata: riprova senza
-  const blocks = j.content || [];
-  let last = -1; blocks.forEach((b, i) => { if (b.type !== 'text') last = i; });
-  const txt = blocks.slice(last + 1).filter(b => b.type === 'text').map(b => b.text).join('') || blocks.filter(b => b.type === 'text').map(b => b.text).join('');
-  const m = txt.match(/```(?:json)?\s*([\s\S]*?)```/); const s = m ? m[1] : txt;
-  const a = s.indexOf('{'), b = s.lastIndexOf('}');
-  if (a < 0 || b < a) throw new Error('Risposta AI non interpretabile.');
-  return JSON.parse(s.slice(a, b + 1));
+  catch (e) { if (opts.web && e.status === 400) return parse(await call(false)); throw e; }   // ricerca web non abilitata: riprova senza
+  try { return parse(j); }
+  catch (e) { if (opts.web) return parse(await call(false)); throw new Error('Risposta AI non interpretabile.'); }
 }
 async function aiFindAddress(query) {
   return claude([{type: 'text', text: `Trova l'indirizzo postale (via e numero civico, CAP, comune, provincia) di: "${query}".
@@ -1350,7 +1371,7 @@ function spesaRow(ed, s, i) {
       <div class="s-date">${fmtD(s.data)}</div>
       <div class="s-main"><b>Rimborso km</b><span class="gtag g-T">Trasferta</span><div class="s-sub">${esc(kmPercorso(s) || 'percorso da indicare')}</div>
         <div class="s-sub">${fmtK(s.km)} km${src ? ' (' + src + ')' : ''} · ${esc(v?.nome || 'veicolo da scegliere')} · ${k.tariffa != null ? fmtT(k.tariffa) + ' €/km' + (s.tariffaCongelata != null ? ' (congelata)' : '') : '<span style="color:var(--bad)">tariffa mancante</span>'}</div></div>
-      <div class="s-doc"></div>
+      <div class="s-doc">${!R && (s.kmFonte !== 'mappa' || !(+s.km > 0)) && S.cfg.orsKey ? `<button class="btn sm primary" data-calc-s="${i}">${ICON.pin} Calcola km</button>` : ''}</div>
       <div class="s-amt num"><b>${fmtE(s.importo)}</b></div>
       <div class="s-act">${act}</div></div>`;
   }
@@ -1399,6 +1420,7 @@ function kmForm(ed) {
       ${!t.luogoId && t.altro ? `<input data-taddr="${i}" value="${esc(t.indirizzo || t.nome || '')}" placeholder="Indirizzo o nome azienda"><button class="btn sm" data-tfind="${i}">Trova</button>` : ''}
       <label class="small muted" style="display:inline-flex;gap:4px;align-items:center" title="Punto di passaggio (es. casello): serve a far seguire il percorso reale, non è una destinazione"><input type="checkbox" data-tvia="${i}" ${t.via ? 'checked' : ''}> passaggio</label>
       <button class="icon-btn" data-tdel="${i}" title="Rimuovi tappa">${ICON.x}</button>
+      ${t.skip ? `<div class="tinfo" style="color:var(--warn)">Punto di passaggio non localizzato: ignorato nel calcolo</div>` : ''}
       ${lu ? `<div class="tinfo">${esc(lu.indirizzo || '')}</div>` : (!t.luogoId && t.lat != null ? `<div class="tinfo">${ICON.pin} ${esc(t.indirizzo)} <button class="linkbtn" data-tsave="${i}">Salva in anagrafica</button></div>` : '')}
       ${s.tratti?.[i] != null ? `<div class="tkm">↓ ${fmtK(s.tratti[i])} km${s.ritorno && i === s.tappe.length - 1 ? ' (ritorno a ' + esc(tappaNome(s.tappe[0])) + ')' : ''}</div>` : ''}
     </div>`;
@@ -1523,7 +1545,7 @@ function finalizeSpesaFiles(ed, s) {
   });
 }
 async function edClick(ed, e) {
-  const el = e.target.closest('[data-act],[data-edit-s],[data-del-s],[data-view],[data-rm-ric],[data-rm-all],[data-tfind],[data-tsave],[data-tdel]'); if (!el) return;
+  const el = e.target.closest('[data-act],[data-calc-s],[data-edit-s],[data-del-s],[data-view],[data-rm-ric],[data-rm-all],[data-tfind],[data-tsave],[data-tdel]'); if (!el) return;
   const d = ed.d, s = ed.editing?.s, kst = () => $('[data-slot="kmstat"]', ed.m.sheet);
   if (el.dataset.tfind !== undefined) {
     e.preventDefault(); const tp = s.tappe[+el.dataset.tfind]; const q = (tp.indirizzo || tp.nome || '').trim(); if (!q) return toast('Scrivi un indirizzo o il nome di un\'azienda.', true);
@@ -1538,6 +1560,13 @@ async function edClick(ed, e) {
     const nl = {id: uid(), nome, indirizzo: tp.indirizzo, lat: tp.lat, lon: tp.lon};
     const cfg = clone(S.cfg); cfg.luoghi.push(nl);
     try { await saveConfig(cfg); Object.assign(tp, {luogoId: nl.id, altro: false}); drawSpese(ed); toast(`"${nome}" salvato nei luoghi`); } catch (err) { toast(errMsg(err), true); }
+    return;
+  }
+  if (el.dataset.calcS !== undefined) {
+    if (ed.editing) return toast('Conferma o annulla prima la spesa aperta.');
+    const x = d.spese[+el.dataset.calcS]; el.disabled = true; el.innerHTML = '<span class="spin" style="width:12px;height:12px"></span> Calcolo…';
+    try { await computeKm(x, d); ed.dirty = true; drawSpese(ed); refreshSlots(ed); toast(`Km calcolati: ${fmtK(x.km)}`); }
+    catch (err) { drawSpese(ed); toast(errMsg(err), true); }
     return;
   }
   if (el.dataset.tdel !== undefined) { e.preventDefault(); s.tappe.splice(+el.dataset.tdel, 1); s.tratti = []; ed.dirty = true; return drawSpese(ed); }
