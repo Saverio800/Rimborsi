@@ -51,6 +51,7 @@ svg.i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .topbar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 .topbar-in{max-width:1320px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:12px}
 .brand{font-weight:700;font-size:17px;letter-spacing:-.01em}
+.ver{font-size:11px;font-weight:600;color:var(--muted);border:1px solid var(--line-2);border-radius:6px;padding:1px 6px;vertical-align:2px;letter-spacing:0}
 .store-pill{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 9px;display:inline-flex;gap:6px;align-items:center}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
 .dot.local{background:var(--warn)}
@@ -134,6 +135,8 @@ table.grid{width:100%;border-collapse:collapse;min-width:1060px}
 .avvisi li{border-radius:8px;padding:7px 11px;font-size:13px;display:flex;gap:8px;align-items:flex-start}
 .avvisi li.warn{background:var(--warn-soft);color:var(--warn)}
 .avvisi li.err{background:var(--bad-soft);color:var(--bad)}
+.avvisi li.force{background:var(--bad-soft);color:var(--bad);opacity:.85}
+.avvisi li.force b,.avvisi li.err b{font-weight:700}
 .kmcalc{margin-top:10px;font-size:13px;color:var(--muted)}
 .kmcalc b{color:var(--text)}
 
@@ -229,7 +232,7 @@ table.mini{width:100%;border-collapse:collapse;font-size:13px}
 <body>
 <header class="topbar hidden" id="topbar">
   <div class="topbar-in">
-    <span class="brand">Rimborsi</span>
+    <span class="brand">Rimborsi <span class="ver" id="appVer"></span></span>
     <span class="store-pill" id="storePill"></span>
     <span class="spacer"></span>
     <button class="btn ghost" data-act="reload" title="Ricarica dati"><svg class="i" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg></button>
@@ -246,7 +249,7 @@ table.mini{width:100%;border-collapse:collapse;font-size:13px}
    Rimborsi trasferte — app personale single-file
    Archivio: OneDrive personale (Microsoft Graph) oppure locale (IndexedDB)
    ========================================================= */
-const APP_VERSION = '0.2.2';
+const APP_VERSION = '0.3.0';
 const ORS = 'https://api.heigit.org';   // api.openrouteservice.org è stato dismesso a novembre 2026
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const PDFLIB_URL = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
@@ -634,7 +637,11 @@ function migratePratica(p) {
   p.schema = 2; return p;
 }
 const tappaNome = t => t.luogoId ? (luogoById(t.luogoId)?.nome || '?') : (t.nome || t.indirizzo || '?');
-function kmPercorso(s) { const n = (s.tappe || []).map(tappaNome); if (s.ritorno && n.length) n.push(n[0]); return n.join(' → '); }
+function kmPercorso(s) {
+  const t = s.tappe || [], stop = t.filter(x => !x.via).map(tappaNome), via = t.filter(x => x.via).map(tappaNome);
+  if (s.ritorno && stop.length) stop.push(stop[0]);
+  return stop.join(' → ') + (via.length ? ` (via ${via.join(', ')})` : '');
+}
 /* aggiorna tariffa e importo di una spesa km; restituisce {km, tariffa, importo, missing} */
 function kmSpesa(s, p) {
   const anno = yearOf(s.data || p?.data);
@@ -659,14 +666,16 @@ function totals(p) {
   }
   return {cols, grp, tot, kmTot, kmImp, vittoAll, oltreTetto};
 }
+const anteCost = p => { const soc = socById(p.societaId); return !!(soc?.attivaDal && p.data && p.data < soc.attivaDal); };
+const LVL_NOTE = {err: 'Blocca l\'invio', force: 'Da completare (forzabile all\'invio)', warn: 'Avviso'};
 function checks(p, all = pratiche()) {
   const out = [], soc = socById(p.societaId), t = totals(p);
-  const err = m => out.push({lvl: 'err', m}), warn = m => out.push({lvl: 'warn', m});
+  const err = m => out.push({lvl: 'err', m}), force = m => out.push({lvl: 'force', m}), warn = m => out.push({lvl: 'warn', m});
   if (!p.data) err('Manca la data.');
   if (!soc) err('Seleziona la società.');
-  if (!(p.motivo || '').trim()) err('Manca il motivo.');
-  if (p.tipo === 'trasferta' && !(p.controparte || '').trim()) err('Manca la controparte (chi hai incontrato / dove).');
-  if (soc?.attivaDal && p.data && p.data < soc.attivaDal) err(`${soc.nome} rimborsa solo dal ${fmtD(soc.attivaDal)}.`);
+  if (!(p.motivo || '').trim()) force('Manca il motivo.');
+  if (p.tipo === 'trasferta' && !(p.controparte || '').trim()) force('Manca la controparte (chi hai incontrato / dove).');
+  if (anteCost(p)) force(`Data precedente all'inizio attività di ${soc.nome} (${fmtD(soc.attivaDal)}): verrà segnalata come spesa ante costituzione.`);
   if (soc && !soc.attivaDal && soc.id === 'delos') warn(`${soc.nome}: data di inizio attività non impostata (Impostazioni → Società).`);
   for (const s of p.spese || []) {
     const c = catOf(s.categoria), g = gruppoOf(s), lab = `${c.label} ${fmtE(s.importo)} €`;
@@ -683,7 +692,7 @@ function checks(p, all = pratiche()) {
       }
       continue;
     }
-    if (g === 'R' && (!(s.ospiti || '').trim() || !(s.motivoRappr || '').trim())) err(`${lab}: per la rappresentanza indica ospiti e motivo.`);
+    if (g === 'R' && (!(s.ospiti || '').trim() || !(s.motivoRappr || '').trim())) force(`${lab}: per la rappresentanza indica ospiti e motivo.`);
     if (g === 'S' && s.fatturaIntestataA !== 'societa') warn(`${lab}: per un costo della società la fattura dovrebbe essere intestata a ${soc?.nome || 'la società'}.`);
     if (c.tracc && g === 'T' && s.pagamento && !TRACCIABILI.has(s.pagamento)) warn(`${lab}: pagamento non tracciabile, il rimborso può diventare tassabile.`);
     if (!(s.ricevute || []).length) warn(`${lab}: nessuna ricevuta allegata.`);
@@ -699,16 +708,20 @@ function checks(p, all = pratiche()) {
 
 /* ---------------- OpenRouteService: indirizzi e distanze ---------------- */
 function orsKey() { if (!S.cfg.orsKey) throw new Error('Chiave OpenRouteService non impostata (Impostazioni → Generale).'); return S.cfg.orsKey; }
-async function orsGeocode(text) {
+const inItaly = p => p.lat >= 35.2 && p.lat <= 47.2 && p.lon >= 6.4 && p.lon <= 18.9;
+async function orsGeocode(text, opt = {}) {
   const key = orsKey();
+  const q = {api_key: key, text, size: '8', 'focus.point.lat': '42.5', 'focus.point.lon': '12.5'};
+  if (opt.italia) q['boundary.country'] = 'IT';
   let r;
-  try { r = await fetch(`${ORS}/pelias/v1/search?` + new URLSearchParams({api_key: key, text, size: '5', 'focus.point.lat': '42.5', 'focus.point.lon': '12.5'}), {headers: {'Authorization': key}}); }
+  try { r = await fetch(`${ORS}/pelias/v1/search?` + new URLSearchParams(q), {headers: {'Authorization': key}}); }
   catch { throw new Error('OpenRouteService non raggiungibile.'); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error('OpenRouteService: ' + (j.error?.message || j.error || ('HTTP ' + r.status)));
   const res = (j.features || []).map(f => ({label: f.properties.label, lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1], country: f.properties.country_a || f.properties.country_code || ''}));
   // a parità di nome preferisce i risultati in Italia (es. "Roma" non in Texas)
-  const it = res.filter(x => /^(ITA|IT)$/i.test(x.country) || /Ital/i.test(x.label));
+  const it = res.filter(x => /^(ITA|IT)$/i.test(x.country) || inItaly(x));
+  if (opt.italia) return it;
   return it.length ? it.concat(res.filter(x => !it.includes(x))) : res;
 }
 async function orsRoute(points) {
@@ -726,36 +739,47 @@ async function orsRoute(points) {
   return {tratti: (rt.segments || []).map(x => Math.round(x.distance * 10) / 10), totale: rt.summary.distance};
 }
 /* trova coordinate per un testo (indirizzo o nome di azienda): prima geocodifica, poi AI con ricerca web */
-async function findPlace(text) {
-  let res = await orsGeocode(text);
+async function findPlace(text, opt = {}) {
+  let res = await orsGeocode(text, opt);
+  if (!res.length && opt.italia && !/ital/i.test(text)) res = await orsGeocode(text + ', Italia', opt);
   if (res.length) return {...res[0], via: 'mappa'};
-  if (!dev.apiKey) throw new Error(`Indirizzo non trovato: "${text}". Scrivi via, numero e comune.`);
+  if (!dev.apiKey) throw new Error(`Indirizzo non trovato: "${text}"${opt.italia ? ' in Italia' : ''}. Scrivi via, numero e comune.`);
   const ai = await aiFindAddress(text);
   if (!ai.indirizzo) throw new Error(`Indirizzo non trovato per "${text}"${ai.note ? ': ' + ai.note : ''}.`);
-  res = await orsGeocode(ai.indirizzo);
-  if (!res.length) throw new Error(`Indirizzo trovato dall'AI (${ai.indirizzo}) ma non localizzabile sulla mappa.`);
+  res = await orsGeocode(ai.indirizzo, opt);
+  if (!res.length) throw new Error(`Indirizzo trovato dall'AI (${ai.indirizzo}) ma non localizzabile sulla mappa${opt.italia ? ' in Italia' : ''}.`);
   return {...res[0], label: ai.indirizzo, via: 'ai'};
 }
 /* risolve le coordinate delle tappe; aggiorna i luoghi in anagrafica senza coordinate */
-async function resolveTappe(s) {
+const TL = 'ABCDEFGHIJKLMNOP';
+async function resolveTappe(s, opt = {}) {
   let cfgChanged = false; const cfg = clone(S.cfg);
-  for (const t of s.tappe) {
-    if (t.luogoId) {
-      const l = cfg.luoghi.find(x => x.id === t.luogoId); if (!l) throw new Error('Luogo non più presente in anagrafica.');
-      if (l.lat == null) { const f = await findPlace(l.indirizzo || l.nome); Object.assign(l, {lat: f.lat, lon: f.lon, trovato: f.label}); cfgChanged = true; }
-      t.lat = l.lat; t.lon = l.lon;
-    } else if (t.lat == null) {
-      const q = (t.indirizzo || t.nome || '').trim(); if (!q) throw new Error('Una tappa è vuota.');
-      const f = await findPlace(q); Object.assign(t, {lat: f.lat, lon: f.lon, indirizzo: f.label});
-    }
+  for (const [i, t] of s.tappe.entries()) {
+    const tag = `Tappa ${TL[i] || i + 1} (${tappaNome(t)})`;
+    try {
+      if (t.luogoId) {
+        const l = cfg.luoghi.find(x => x.id === t.luogoId); if (!l) throw new Error('luogo non più presente in anagrafica');
+        if (l.lat == null) { const f = await findPlace(l.indirizzo || l.nome, {}); Object.assign(l, {lat: f.lat, lon: f.lon, trovato: f.label}); cfgChanged = true; }
+        t.lat = l.lat; t.lon = l.lon; t.trovato = l.trovato || l.indirizzo;
+      } else {
+        if (t.lat != null && opt.italia && !inItaly(t)) { t.lat = t.lon = null; }
+        if (t.lat == null) {
+          const q = (t.indirizzo || t.nome || '').trim(); if (!q) throw new Error('tappa vuota');
+          const f = await findPlace(q, opt); Object.assign(t, {lat: f.lat, lon: f.lon, indirizzo: f.label, trovato: f.label});
+        }
+      }
+    } catch (e) { throw new Error(`${tag}: ${errMsg(e)}`); }
+    if (opt.italia && !inItaly(t)) throw new Error(`${tag} è localizzata fuori Italia (${t.trovato || t.indirizzo}). Se la trasferta è all'estero spunta "Trasferta all'estero", altrimenti correggi l'indirizzo.`);
   }
   if (cfgChanged) await saveConfig(cfg).catch(() => {});
 }
-async function computeKm(s) {
+async function computeKm(s, p) {
   if ((s.tappe || []).length < 2) throw new Error('Servono almeno due tappe.');
-  await resolveTappe(s);
+  await resolveTappe(s, {italia: !p?.estero});
   const pts = s.tappe.map(t => ({lat: t.lat, lon: t.lon})); if (s.ritorno) pts.push(pts[0]);
-  const r = await orsRoute(pts);
+  let r;
+  try { r = await orsRoute(pts); }
+  catch (e) { throw new Error(errMsg(e) + ' Tappe localizzate: ' + s.tappe.map((t, i) => `${TL[i] || i + 1} = ${t.trovato || t.indirizzo || tappaNome(t)}`).join('; ')); }
   s.tratti = r.tratti; s.km = Math.round(r.totale); s.kmFonte = 'mappa';
   if (s._ai) delete s._ai.km;
   return s;
@@ -857,7 +881,7 @@ function pickFolder(first = false) {
    VISTA PRINCIPALE
    ========================================================= */
 function renderApp() {
-  $('#topbar').classList.remove('hidden');
+  $('#topbar').classList.remove('hidden'); $('#appVer').textContent = 'v' + APP_VERSION;
   $('#storePill').innerHTML = fs.kind === 'onedrive'
     ? `<span class="dot"></span><span class="lbl">OneDrive · /${esc(dev.root)}</span>`
     : `<span class="dot local"></span><span class="lbl">Locale (solo questo browser)</span>`;
@@ -920,7 +944,7 @@ function renderTable() {
   const rows = list.map(p => {
     const t = totals(p), soc = socById(p.societaId), ck = checks(p, all);
     for (const k in t.cols) sum[k] = r2(sum[k] + t.cols[k]); sum.tot = r2(sum.tot + t.tot); sum.kmN += t.kmTot;
-    const nErr = ck.filter(c => c.lvl === 'err').length, nW = ck.length - nErr;
+    const nErr = ck.filter(c => c.lvl !== 'warn').length, nW = ck.length - nErr;
     const badge = ck.length ? `<span class="warnbadge ${nErr ? 'err' : ''}" title="${esc(ck.map(c => c.m).join('\n'))}">${ICON.warn}${ck.length}</span>` : '';
     const sub = [p.motivo, p.controparte].filter(Boolean).join(' · ');
     const date = p.dataFine && p.dataFine !== p.data ? `${fmtD(p.data)}<span class="kmsub">→ ${fmtD(p.dataFine)}</span>` : fmtD(p.data);
@@ -1094,7 +1118,7 @@ Restituisci questo JSON:
  "dealId":"<id di un deal noto>"|null,
  "fonti":{"<campo>":"documento"|"testo"|"stima"},
  "spese":[
-   {"categoria":"km","data":"YYYY-MM-DD","veicoloId":"<id>","tappe":[{"luogoId":"<id luogo noto>"|null,"nome":"","indirizzo":"via, numero, CAP comune"|null}],"ritorno":true|false,"kmStima":number|null},
+   {"categoria":"km","data":"YYYY-MM-DD","veicoloId":"<id>","tappe":[{"luogoId":"<id luogo noto>"|null,"nome":"","indirizzo":"via, numero, CAP comune, Italia"|null,"passaggio":false}],"ritorno":true|false,"kmStima":number|null},
    {"data":"YYYY-MM-DD","categoria":"<id>","importo":number,"pagamento":"carta"|"bancomat"|"bonifico"|"telepass"|"contanti"|null,
     "descrizione":"breve","fatturaIntestataA":"societa"|"me"|"scontrino","imponibile":number|null,"iva":number|null,
     "ospiti":""|null,"motivoRappr":""|null,"documenti":[indici dei documenti da cui deriva],"fonti":{"<campo>":"documento"|"testo"|"stima"}}
@@ -1102,6 +1126,7 @@ Restituisci questo JSON:
  "nota":"dubbi o cose da verificare, in una o due frasi"|null
 }
 Spostamenti con auto propria: crea una spesa "km" con le tappe in ordine (partenza, tappe intermedie, destinazione). Se manca la partenza usa il luogo noto "Casa". Per i luoghi noti metti luogoId; per aziende o luoghi non noti cerca sul web l'indirizzo della sede o dello stabilimento e mettilo in "indirizzo". Se il viaggio torna al punto di partenza usa "ritorno":true invece di ripetere la tappa. kmStima è solo la tua stima: la distanza verrà ricalcolata sulla mappa. Se parte del viaggio è fatta con altri mezzi (treno, aereo, taxi) crea quelle spese e una spesa "km" solo per i tratti in auto; più spese "km" sono ammesse.
+Caselli autostradali: se ci sono transiti Telepass, biglietti o ricevute di caselli, usali per ricostruire il percorso reale. Aggiungi ogni casello di entrata e di uscita come tappa di passaggio, nell'ordine di percorrenza: {"luogoId":null,"nome":"Casello <nome> (<autostrada>)","indirizzo":"casello autostradale <nome>, <comune>, Italia","passaggio":true}. Usa il casello di uscita per capire la zona della destinazione quando il testo non la precisa. Le tappe con "passaggio":true servono solo a guidare il calcolo dei km. Negli indirizzi italiani aggiungi sempre ", Italia".
 Deal: usa dealId solo se corrisponde a un deal noto; altrimenti null.
 Telepass: includi solo i transiti nelle date della pratica e coerenti col percorso, una spesa "pedaggio" per giorno con la somma dei transiti.
 Non creare spese per voci che non risultano né dai documenti né dal testo.`});
@@ -1124,7 +1149,7 @@ function draftFromAI(res, files) {
       const s = newSpesa(d, 'km'); s._ai = {};
       if (/^\d{4}-\d{2}-\d{2}$/.test(x.data || '')) s.data = x.data;
       s.veicoloId = vehById(x.veicoloId) ? x.veicoloId : s.veicoloId;
-      s.tappe = (x.tappe || []).map(t => luogoById(t.luogoId) ? {luogoId: t.luogoId, altro: false} : {luogoId: '', altro: true, nome: t.nome || t.indirizzo || '', indirizzo: t.indirizzo || '', lat: null, lon: null});
+      s.tappe = (x.tappe || []).map(t => luogoById(t.luogoId) ? {luogoId: t.luogoId, altro: false, via: !!t.passaggio} : {luogoId: '', altro: true, via: !!t.passaggio, nome: t.nome || t.indirizzo || '', indirizzo: t.indirizzo || '', lat: null, lon: null});
       s.ritorno = !!x.ritorno;
       if (+x.kmStima > 0) { s.km = Math.round(+x.kmStima); s.kmFonte = 'stima'; s._ai.km = 'stima'; }
       return s;
@@ -1211,7 +1236,7 @@ function openNew() {
       const kmS = d.spese.filter(x => x.categoria === 'km');
       if (kmS.length && S.cfg.orsKey) {
         btn.innerHTML = '<span class="spin"></span> Calcolo le distanze…';
-        for (const x of kmS) { try { await computeKm(x); } catch (e) { d._aiNota = (d._aiNota ? d._aiNota + ' ' : '') + 'Km non calcolati: ' + errMsg(e); } }
+        for (const x of kmS) { try { await computeKm(x, d); } catch (e) { d._aiNota = (d._aiNota ? d._aiNota + ' ' : '') + 'Km non calcolati: ' + errMsg(e); } }
       }
       m.close(true); openEditor(d, {isNew: true, pending, dirty: true});
     } catch (e) { btn.disabled = false; btn.textContent = 'Compila con AI'; toast(errMsg(e), true); }
@@ -1305,7 +1330,7 @@ function drawEditor(ed) {
 function refreshSlots(ed) {
   const d = ed.d, t = totals(d), sl = n => $(`[data-slot="${n}"]`, ed.m.sheet);
   sl('tot').textContent = fmtE(t.tot) + ' €';
-  sl('avvisi').innerHTML = checks(d).map(c => `<li class="${c.lvl}">${ICON.warn}<span>${esc(c.m)}</span></li>`).join('');
+  sl('avvisi').innerHTML = checks(d).map(c => `<li class="${c.lvl}" title="${LVL_NOTE[c.lvl]}">${ICON.warn}<span>${c.lvl === 'err' ? '<b>Blocca l\'invio:</b> ' : ''}${esc(c.m)}</span></li>`).join('');
   const ki = sl('kmimp'); if (ki && ed.editing?.s.categoria === 'km') ki.innerHTML = kmImpText(ed.editing.s, d);
 }
 function kmImpText(s, d) {
@@ -1372,6 +1397,7 @@ function kmForm(ed) {
     return `<div class="tappa"><span class="tl">${L[i] || i + 1}</span>
       <select data-tsel="${i}">${opts(t)}</select>
       ${!t.luogoId && t.altro ? `<input data-taddr="${i}" value="${esc(t.indirizzo || t.nome || '')}" placeholder="Indirizzo o nome azienda"><button class="btn sm" data-tfind="${i}">Trova</button>` : ''}
+      <label class="small muted" style="display:inline-flex;gap:4px;align-items:center" title="Punto di passaggio (es. casello): serve a far seguire il percorso reale, non è una destinazione"><input type="checkbox" data-tvia="${i}" ${t.via ? 'checked' : ''}> passaggio</label>
       <button class="icon-btn" data-tdel="${i}" title="Rimuovi tappa">${ICON.x}</button>
       ${lu ? `<div class="tinfo">${esc(lu.indirizzo || '')}</div>` : (!t.luogoId && t.lat != null ? `<div class="tinfo">${ICON.pin} ${esc(t.indirizzo)} <button class="linkbtn" data-tsave="${i}">Salva in anagrafica</button></div>` : '')}
       ${s.tratti?.[i] != null ? `<div class="tkm">↓ ${fmtK(s.tratti[i])} km${s.ritorno && i === s.tappe.length - 1 ? ' (ritorno a ' + esc(tappaNome(s.tappe[0])) + ')' : ''}</div>` : ''}
@@ -1433,6 +1459,8 @@ function edInput(ed, e) {
     }
     if (f === 'importo') s.importo = +t.value || 0;
     if (['categoria', 'gruppo', 'fatturaIntestataA'].includes(f)) drawSpese(ed);
+  } else if (t.dataset.tvia !== undefined && ed.editing) {
+    ed.editing.s.tappe[+t.dataset.tvia].via = t.checked; ed.editing.s.tratti = []; ed.dirty = true;
   } else if (t.dataset.taddr !== undefined && ed.editing) {
     const tp = ed.editing.s.tappe[+t.dataset.taddr]; tp.indirizzo = tp.nome = t.value; tp.lat = tp.lon = null; ed.editing.s.tratti = []; ed.dirty = true;
   } else if (t.name === 'tipo') {
@@ -1500,7 +1528,7 @@ async function edClick(ed, e) {
   if (el.dataset.tfind !== undefined) {
     e.preventDefault(); const tp = s.tappe[+el.dataset.tfind]; const q = (tp.indirizzo || tp.nome || '').trim(); if (!q) return toast('Scrivi un indirizzo o il nome di un\'azienda.', true);
     kst().innerHTML = '<span class="spin" style="width:12px;height:12px;vertical-align:-2px"></span> Cerco l\'indirizzo…';
-    try { const f = await findPlace(q); Object.assign(tp, {lat: f.lat, lon: f.lon, indirizzo: f.label, nome: tp.nome || f.label}); s.tratti = []; drawSpese(ed); }
+    try { const f = await findPlace(q, {italia: !d.estero}); Object.assign(tp, {lat: f.lat, lon: f.lon, indirizzo: f.label, trovato: f.label, nome: tp.nome || f.label}); s.tratti = []; drawSpese(ed); }
     catch (err) { const k = kst(); if (k) k.textContent = errMsg(err); }
     return;
   }
@@ -1527,7 +1555,7 @@ async function edClick(ed, e) {
   if (act === 'add-tappa') { s.tappe.push({luogoId: '', altro: true, nome: '', indirizzo: '', lat: null, lon: null}); s.tratti = []; return drawSpese(ed); }
   if (act === 'calc-km') {
     kst().innerHTML = '<span class="spin" style="width:12px;height:12px;vertical-align:-2px"></span> Calcolo il percorso…';
-    try { await computeKm(s); ed.dirty = true; drawSpese(ed); refreshSlots(ed); }
+    try { await computeKm(s, d); ed.dirty = true; drawSpese(ed); refreshSlots(ed); }
     catch (err) { const k = kst(); if (k) k.textContent = errMsg(err); }
     return;
   }
@@ -1557,7 +1585,7 @@ async function edClick(ed, e) {
     ed.m.close(true); return openEditor(n, {isNew: true, dirty: true});
   }
 }
-function folderName(d) { return safeName(`${d.id} - ${d.data} ${d.luogo || (d.tipo === 'trasferta' ? 'trasferta' : 'spesa')} - ${socById(d.societaId)?.nome?.split(' ')[0] || ''}`); }
+function folderName(d) { return safeName(`${d.id} - ${d.data || 'senza data'} ${d.luogo || (d.tipo === 'trasferta' ? 'trasferta' : 'spesa')} - ${socById(d.societaId)?.nome?.split(' ')[0] || ''}`); }
 function stripTransient(d) {
   const c = clone(d); delete c._ai; delete c._aiNota;
   for (const s of c.spese || []) delete s._ai;
@@ -1578,8 +1606,8 @@ function riepilogoTxt(p) {
 }
 async function savePratica(ed) {
   if (ed.editing) return toast('Conferma o annulla prima la spesa aperta.', true);
-  const d = ed.d, errs = checks(d).filter(c => c.lvl === 'err');
-  if (errs.length) { refreshSlots(ed); $('[data-slot="avvisi"]', ed.m.sheet).scrollIntoView({behavior: 'smooth', block: 'center'}); return toast('Da completare: ' + errs[0].m, true); }
+  const d = ed.d, open = checks(d).filter(c => c.lvl !== 'warn').length;
+  if (!d.data) d.data = today();
   await guard(async () => {
     busy('Salvo…');
     const isNew = !d.id, now = new Date().toISOString();
@@ -1599,7 +1627,7 @@ async function savePratica(ed) {
     await updateIndex(idx => { idx.pratiche[clean.id] = clean; });
     const last = ls.get(LAST_KEY, {}); ls.set(LAST_KEY, Object.assign(last, {societaId: d.societaId}));
     busy(null); ed.dirty = false; ed.pending.clear(); ed.removed.clear(); ed.m.close(true); refreshMain();
-    toast(`${clean.id} salvata`);
+    toast(open ? `${clean.id} salvata in bozza: ${open} ${open === 1 ? 'punto' : 'punti'} da completare prima dell'invio` : `${clean.id} salvata`);
   }, 'Salvataggio non riuscito');
 }
 async function deletePratica(ed) {
@@ -1651,14 +1679,16 @@ function openExport() {
       const list = candidates(); if (!st.sel) st.sel = new Set(list.map(p => p.id));
       const chosen = list.filter(p => st.sel.has(p.id)), tot = r2(chosen.reduce((a, p) => a + totals(p).tot, 0));
       const blocked = chosen.filter(p => checks(p).some(c => c.lvl === 'err'));
+      const forced = chosen.filter(p => !blocked.includes(p) && checks(p).some(c => c.lvl === 'force'));
       body().innerHTML = `<div class="fgrid" style="margin-bottom:12px">
           <label class="fld s6"><span>Società</span><select id="xSoc">${S.cfg.societa.map(s => `<option value="${esc(s.id)}" ${s.id === st.soc ? 'selected' : ''}>${esc(s.nome)}</option>`).join('')}</select></label>
           <label class="fld s3 half"><span>Dal</span><input type="date" id="xDal" value="${st.dal}"></label>
           <label class="fld s3 half"><span>Al</span><input type="date" id="xAl" value="${st.al}"></label></div>
         ${list.length ? `<table class="mini"><thead><tr><th style="width:28px"><input type="checkbox" id="xAll" ${chosen.length === list.length ? 'checked' : ''}></th><th>Pratica</th><th>Data</th><th>Luogo / descrizione</th><th class="num">Totale €</th><th></th></tr></thead><tbody>
-          ${list.map(p => { const ck = checks(p), e = ck.some(c => c.lvl === 'err'); return `<tr class="${st.sel.has(p.id) ? 'sel' : ''}"><td><input type="checkbox" data-pick="${esc(p.id)}" ${st.sel.has(p.id) ? 'checked' : ''}></td><td>${esc(p.id)}</td><td>${fmtD(p.data)}</td><td>${esc(p.luogo)}</td><td class="num">${fmtE(totals(p).tot)}</td><td>${ck.length ? `<span class="warnbadge ${e ? 'err' : ''}" title="${esc(ck.map(c => c.m).join('\n'))}">${ICON.warn}${ck.length}</span>` : ''}</td></tr>`; }).join('')}
+          ${list.map(p => { const ck = checks(p), e = ck.some(c => c.lvl !== 'warn'); return `<tr class="${st.sel.has(p.id) ? 'sel' : ''}"><td><input type="checkbox" data-pick="${esc(p.id)}" ${st.sel.has(p.id) ? 'checked' : ''}></td><td>${esc(p.id)}</td><td>${fmtD(p.data)}</td><td>${esc(p.luogo)}</td><td class="num">${fmtE(totals(p).tot)}</td><td>${ck.length ? `<span class="warnbadge ${e ? 'err' : ''}" title="${esc(ck.map(c => c.m).join('\n'))}">${ICON.warn}${ck.length}</span>` : ''}</td></tr>`; }).join('')}
           </tbody></table>` : `<div class="empty">Nessuna bozza di questa società nel periodo.</div>`}
-        ${blocked.length ? `<div class="banner info" style="margin-top:12px;color:var(--bad)">Da completare prima dell'invio: ${blocked.map(p => esc(p.id)).join(', ')}.</div>` : ''}
+        ${blocked.length ? `<div class="banner info" style="margin-top:12px;color:var(--bad)"><b>Bloccano l'invio</b> (importi, km, tariffa, data o società mancanti): ${blocked.map(p => esc(p.id)).join(', ')}. Correggile o togli la spunta.</div>` : ''}
+        ${forced.length ? `<div class="banner info" style="margin-top:12px;color:var(--warn)">Con dati da completare, inviabili comunque: ${forced.map(p => esc(p.id)).join(', ')}.</div>` : ''}
         <p class="small muted" style="margin-top:12px">L'invio genera il PDF (elenco pratiche, riepilogo per natura, dettaglio e ricevute), lo salva in <code>invii/</code> e porta le pratiche a <b>inviata</b>: la tariffa km viene congelata e non saranno più modificabili, salvo annullare l'invio.</p>`;
       foot().innerHTML = `<span class="small"><b>${chosen.length}</b> pratiche · <b>${fmtE(tot)} €</b></span><span class="spacer"></span>
         <button class="btn" id="xPrev" ${chosen.length ? '' : 'disabled'}>Anteprima PDF</button>
@@ -1675,6 +1705,10 @@ function openExport() {
         download(new Blob([bytes], {type: 'application/pdf'}), `Anteprima nota spese ${socById(st.soc)?.nome || ''} ${today()}.pdf`);
       }, 'PDF');
       $('#xSend', m.sheet).onclick = () => {
+        if (forced.length) {
+          const det = forced.map(p => `${p.id}: ` + checks(p).filter(c => c.lvl === 'force').map(c => c.m).join(' ')).join('\n');
+          if (!confirm(`Alcune pratiche hanno dati da completare:\n\n${det}\n\nInviare comunque?`)) return;
+        }
         if (!confirm(`Inviare ${chosen.length} pratiche a ${socById(st.soc)?.nome} per ${fmtE(tot)} €?\nDiventeranno "inviate" e non più modificabili.`)) return;
         guard(async () => { await creaInvio(st.soc, chosen.map(p => p.id)); st.sel = null; tab = 'storico'; draw(); }, 'Invio non riuscito');
       };
@@ -1764,11 +1798,11 @@ async function annullaInvio(id) {
 }
 function exportCSV(list, name) {
   const N = n => n == null || n === '' ? '' : r2(n).toFixed(2).replace('.', ',');
-  const rows = [['Invio','Pratica','Stato','Data','Data fine','Società','Tipo pratica','Luogo / descrizione','Percorso','Motivo','Controparte','Deal','Natura','Categoria','Descrizione spesa','Data spesa','Km','Tariffa €/km','Importo €','Pagamento','Tracciabile','Documento','Imponibile €','IVA €','Ospiti','Motivo rappresentanza','Documenti']];
+  const rows = [['Invio','Pratica','Stato','Data','Data fine','Società','Tipo pratica','Luogo / descrizione','Percorso','Motivo','Controparte','Deal','Ante costituzione','Natura','Categoria','Descrizione spesa','Data spesa','Km','Tariffa €/km','Importo €','Pagamento','Tracciabile','Documento','Imponibile €','IVA €','Ospiti','Motivo rappresentanza','Documenti']];
   for (const p of list.sort((a, b) => a.data.localeCompare(b.data))) {
     totals(p);
     const soc = socById(p.societaId)?.nome || '', perc = (p.spese || []).filter(s => s.categoria === 'km').map(kmPercorso).join(' | ');
-    const head = [p.invioId || '', p.id, p.stato, p.data, p.dataFine || '', soc, p.tipo === 'trasferta' ? 'Trasferta' : 'Spesa singola', p.luogo, perc, p.motivo, p.controparte, dealName(p)];
+    const head = [p.invioId || '', p.id, p.stato, p.data, p.dataFine || '', soc, p.tipo === 'trasferta' ? 'Trasferta' : 'Spesa singola', p.luogo, perc, p.motivo, p.controparte, dealName(p), anteCost(p) ? 'sì' : ''];
     for (const s of p.spese || []) if (s.categoria === 'km') { const v = vehById(s.veicoloId); rows.push([...head, GROUPS.T, 'Rimborso chilometrico', `${kmPercorso(s)} (${v?.nome || ''}${v?.targa ? ' ' + v.targa : ''})`, s.data || p.data, s.km, s.tariffa == null ? '' : String(s.tariffa).replace('.', ','), N(s.importo), '', '', '', '', '', '', '', '']); }
     for (const s of (p.spese || []).filter(x => x.categoria !== 'km')) rows.push([...head, GROUPS[gruppoOf(s)], catOf(s.categoria).label, s.descrizione, s.data, '', '', N(s.importo), PAGAMENTI[s.pagamento] || '', TRACCIABILI.has(s.pagamento) ? 'sì' : 'no', INTESTAZIONI[s.fatturaIntestataA] || '', N(s.imponibile), N(s.iva), s.ospiti || '', s.motivoRappr || '', (s.ricevute || []).join(' | ')]);
   }
@@ -1843,7 +1877,7 @@ async function buildPdf(inv, prat, opts = {}) {
   const tots = prat.map(p => totals(p)); const tot = r2(tots.reduce((a, t) => a + t.tot, 0));
   h2('Elenco pratiche');
   table([{h: 'Pratica', w: 50}, {h: 'Data', w: 58}, {h: 'Tipo', w: 52}, {h: 'Luogo / descrizione', w: 140}, {h: 'Motivo', w: 113}, {h: 'Km', w: 38, a: 'r'}, {h: 'Totale EUR', w: 60, a: 'r'}],
-    prat.map((p, i) => [p.id, fmtD(p.data) + (p.dataFine && p.dataFine !== p.data ? '\n' + fmtD(p.dataFine) : ''), p.tipo === 'trasferta' ? 'Trasferta' : 'Spesa', p.luogo, [p.motivo, p.controparte].filter(Boolean).join(' - '), tots[i].kmTot ? fmtK(tots[i].kmTot) : '', fmtE(tots[i].tot)])
+    prat.map((p, i) => [p.id, fmtD(p.data) + (p.dataFine && p.dataFine !== p.data ? '\n' + fmtD(p.dataFine) : ''), (p.tipo === 'trasferta' ? 'Trasferta' : 'Spesa') + (anteCost(p) ? '\nante cost.' : ''), p.luogo, [p.motivo, p.controparte].filter(Boolean).join(' - '), tots[i].kmTot ? fmtK(tots[i].kmTot) : '', fmtE(tots[i].tot)])
       .concat([['', '', '', 'TOTALE', '', fmtK(tots.reduce((a, t) => a + t.kmTot, 0)), fmtE(tot)]]), {bold: new Set([prat.length])});
   const sumG = {T: 0, S: 0, R: 0}, kmTot = r2(tots.reduce((a, t) => a + t.kmImp, 0)); let viagg = 0, vitto = 0, oltre = 0;
   prat.forEach((p, i) => { const t = tots[i]; for (const g in sumG) sumG[g] = r2(sumG[g] + t.grp[g]); oltre = r2(oltre + t.oltreTetto); for (const s of p.spese || []) if (gruppoOf(s) === 'T' && s.categoria !== 'km') { if (catOf(s.categoria).tetto) vitto = r2(vitto + s.importo); else viagg = r2(viagg + s.importo); } });
@@ -1872,7 +1906,8 @@ async function buildPdf(inv, prat, opts = {}) {
     const right = fmtE(t.tot) + ' EUR'; T(right, W - M - tw(right, 14, true), y - 12, {size: 14, b: true});
     y -= 32; for (const l of wrap(p.luogo || '', CW - 120, 16, true)) { T(l, M, y, {size: 16, b: true}); y -= 19; } y -= 4;
     kv([['Data', fmtD(p.data) + (p.dataFine && p.dataFine !== p.data ? ' - ' + fmtD(p.dataFine) : '')], ['Percorso', kmS.map(kmPercorso).join('\n')], ['Motivo', p.motivo], ['Controparte', p.controparte], ['Deal / progetto', dealName(p)],
-      ['Veicolo', veic], ['Estero', p.estero ? 'Sì' : ''], ['Note', p.note]]);
+      ['Veicolo', veic], ['Estero', p.estero ? 'Sì' : ''], ['Note', p.note],
+      ['Ante costituzione', anteCost(p) ? `Sì: spesa sostenuta prima dell'inizio attività della società (${fmtD(socById(p.societaId).attivaDal)})` : '']]);
     const rows = [];
     const docNum = new Map();
     for (const s of p.spese || []) {
