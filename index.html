@@ -246,8 +246,8 @@ table.mini{width:100%;border-collapse:collapse;font-size:13px}
    Rimborsi trasferte — app personale single-file
    Archivio: OneDrive personale (Microsoft Graph) oppure locale (IndexedDB)
    ========================================================= */
-const APP_VERSION = '0.2.0';
-const ORS = 'https://api.openrouteservice.org';
+const APP_VERSION = '0.2.1';
+const ORS = 'https://api.heigit.org';   // api.openrouteservice.org è stato dismesso a novembre 2026
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const PDFLIB_URL = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
 const GRAPH = 'https://graph.microsoft.com/v1.0';
@@ -702,7 +702,7 @@ function orsKey() { if (!S.cfg.orsKey) throw new Error('Chiave OpenRouteService 
 async function orsGeocode(text) {
   const key = orsKey();
   let r;
-  try { r = await fetch(`${ORS}/geocode/search?` + new URLSearchParams({api_key: key, text, size: '5', 'focus.point.lat': '42.5', 'focus.point.lon': '12.5'})); }
+  try { r = await fetch(`${ORS}/pelias/v1/search?` + new URLSearchParams({api_key: key, text, size: '5', 'focus.point.lat': '42.5', 'focus.point.lon': '12.5'}), {headers: {'Authorization': key}}); }
   catch { throw new Error('OpenRouteService non raggiungibile.'); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error('OpenRouteService: ' + (j.error?.message || j.error || ('HTTP ' + r.status)));
@@ -711,7 +711,7 @@ async function orsGeocode(text) {
 async function orsRoute(points) {
   const key = orsKey();
   let r;
-  try { r = await fetch(`${ORS}/v2/directions/driving-car`, {method: 'POST', headers: {'Authorization': key, 'Content-Type': 'application/json'}, body: JSON.stringify({coordinates: points.map(p => [p.lon, p.lat]), units: 'km'})}); }
+  try { r = await fetch(`${ORS}/openrouteservice/v2/directions/driving-car`, {method: 'POST', headers: {'Authorization': key, 'Content-Type': 'application/json'}, body: JSON.stringify({coordinates: points.map(p => [p.lon, p.lat]), units: 'km'})}); }
   catch { throw new Error('OpenRouteService non raggiungibile.'); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error('Calcolo percorso: ' + (j.error?.message || j.error || ('HTTP ' + r.status)));
