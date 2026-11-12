@@ -246,7 +246,7 @@ table.mini{width:100%;border-collapse:collapse;font-size:13px}
    Rimborsi trasferte — app personale single-file
    Archivio: OneDrive personale (Microsoft Graph) oppure locale (IndexedDB)
    ========================================================= */
-const APP_VERSION = '0.2.1';
+const APP_VERSION = '0.2.2';
 const ORS = 'https://api.heigit.org';   // api.openrouteservice.org è stato dismesso a novembre 2026
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const PDFLIB_URL = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
@@ -706,7 +706,10 @@ async function orsGeocode(text) {
   catch { throw new Error('OpenRouteService non raggiungibile.'); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error('OpenRouteService: ' + (j.error?.message || j.error || ('HTTP ' + r.status)));
-  return (j.features || []).map(f => ({label: f.properties.label, lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1]}));
+  const res = (j.features || []).map(f => ({label: f.properties.label, lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1], country: f.properties.country_a || f.properties.country_code || ''}));
+  // a parità di nome preferisce i risultati in Italia (es. "Roma" non in Texas)
+  const it = res.filter(x => /^(ITA|IT)$/i.test(x.country) || /Ital/i.test(x.label));
+  return it.length ? it.concat(res.filter(x => !it.includes(x))) : res;
 }
 async function orsRoute(points) {
   const key = orsKey();
@@ -714,7 +717,11 @@ async function orsRoute(points) {
   try { r = await fetch(`${ORS}/openrouteservice/v2/directions/driving-car`, {method: 'POST', headers: {'Authorization': key, 'Content-Type': 'application/json'}, body: JSON.stringify({coordinates: points.map(p => [p.lon, p.lat]), units: 'km'})}); }
   catch { throw new Error('OpenRouteService non raggiungibile.'); }
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error('Calcolo percorso: ' + (j.error?.message || j.error || ('HTTP ' + r.status)));
+  if (!r.ok) {
+    const msg = j.error?.message || j.error || ('HTTP ' + r.status);
+    if (/6000000|distance must not be greater|could not find routable point/i.test(String(msg))) throw new Error('Una tappa è stata localizzata nel posto sbagliato (troppo lontana o non raggiungibile in auto): controlla gli indirizzi delle tappe. Dettaglio: ' + msg);
+    throw new Error('Calcolo percorso: ' + msg);
+  }
   const rt = j.routes?.[0]; if (!rt) throw new Error('Nessun percorso stradale trovato.');
   return {tratti: (rt.segments || []).map(x => Math.round(x.distance * 10) / 10), totale: rt.summary.distance};
 }
@@ -1966,8 +1973,9 @@ function openSettingsUI(tab = 'generale') {
       $('#sOrsTest', m.sheet).onclick = async () => {
         const r = $('#sOrsRes', m.sheet), old = S.cfg.orsKey; S.cfg.orsKey = (cfg.orsKey || '').trim();
         r.innerHTML = '<span class="spin" style="width:12px;height:12px;vertical-align:-2px"></span>';
-        try { const a = (await orsGeocode('Piazza del Duomo, Milano'))[0], b = (await orsGeocode('Piazza Venezia, Roma'))[0]; if (!a || !b) throw new Error('geocodifica vuota');
-          const k = await orsRoute([a, b]); r.textContent = `✓ Funziona: ${fmtK(k.totale)} km`; r.style.color = 'var(--ok)'; }
+        try { const a = (await orsGeocode('Piazza del Duomo, 20122 Milano, Italia'))[0], b = (await orsGeocode('Piazza Venezia, 00187 Roma, Italia'))[0]; if (!a || !b) throw new Error('geocodifica vuota');
+          r.textContent = `Trovati: ${a.label} | ${b.label} — calcolo…`;
+          const k = await orsRoute([a, b]); r.textContent = `✓ Funziona: ${fmtK(k.totale)} km (${a.label} → ${b.label})`; r.style.color = 'var(--ok)'; }
         catch (e) { r.textContent = errMsg(e); r.style.color = 'var(--bad)'; }
         finally { S.cfg.orsKey = old; }
       };
