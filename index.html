@@ -249,7 +249,7 @@ table.mini{width:100%;border-collapse:collapse;font-size:13px}
    Rimborsi trasferte — app personale single-file
    Archivio: OneDrive personale (Microsoft Graph) oppure locale (IndexedDB)
    ========================================================= */
-const APP_VERSION = '0.3.1';
+const APP_VERSION = '0.3.2';
 const ORS = 'https://api.heigit.org';   // api.openrouteservice.org è stato dismesso a novembre 2026
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const PDFLIB_URL = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
@@ -745,18 +745,24 @@ function placeQueries(text) {
   const comune = parts.length ? parts[parts.length - 1].replace(/^\d{5}\s*/, '').replace(/\s+\(?[A-Z]{2}\)?$/, '') : '';
   return [...new Set([text, clean, parts.slice(-2).join(', '), comune].filter(q => q && q.length > 1))];
 }
+const normTxt = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const GEO_STOP = new Set(['casello', 'autostradale', 'autostrada', 'uscita', 'barriera', 'svincolo', 'raccordo', 'del', 'della', 'dei', 'est', 'ovest', 'nord', 'sud', 'italia', 'via', 'piazza', 'srl', 'spa']);
+const keyTokens = t => normTxt(t).replace(/\([^)]*\)/g, ' ').split(/[^a-z0-9]+/).filter(w => w.length >= 3 && !GEO_STOP.has(w) && !/^a\d+$/.test(w) && !/^\d+$/.test(w));
+/* scarta risultati che non contengono nessuna parola significativa della ricerca (es. "Casello Autostradale, UD" per "casello Roma Est") */
+const plausible = (r, q) => { const k = keyTokens(q); if (!k.length) return true; const l = normTxt(r.label); return k.some(w => l.includes(w)); };
 async function findPlace(text, opt = {}) {
   let res = [];
   for (const q of placeQueries(text)) {
-    res = await orsGeocode(q, opt);
-    if (!res.length && opt.italia && !/ital/i.test(q)) res = await orsGeocode(q + ', Italia', opt);
+    res = (await orsGeocode(q, opt)).filter(x => plausible(x, q));
+    if (!res.length && opt.italia && !/ital/i.test(q)) res = (await orsGeocode(q + ', Italia', opt)).filter(x => plausible(x, q));
     if (res.length) break;
   }
   if (res.length) return {...res[0], via: 'mappa'};
   if (!dev.apiKey) throw new Error(`Indirizzo non trovato: "${text}"${opt.italia ? ' in Italia' : ''}. Scrivi via, numero e comune.`);
   const ai = await aiFindAddress(text);
   if (!ai.indirizzo) throw new Error(`Indirizzo non trovato per "${text}"${ai.note ? ': ' + ai.note : ''}.`);
-  res = await orsGeocode(ai.indirizzo, opt);
+  res = (await orsGeocode(ai.indirizzo, opt)).filter(x => plausible(x, ai.indirizzo));
+  if (!res.length) res = await orsGeocode(ai.indirizzo, opt);
   if (!res.length) throw new Error(`Indirizzo trovato dall'AI (${ai.indirizzo}) ma non localizzabile sulla mappa${opt.italia ? ' in Italia' : ''}.`);
   return {...res[0], label: ai.indirizzo, via: 'ai'};
 }
@@ -778,24 +784,30 @@ async function resolveTappe(s, opt = {}) {
           const f = await findPlace(q, opt); Object.assign(t, {lat: f.lat, lon: f.lon, indirizzo: f.label, trovato: f.label});
         }
       }
-      t.skip = false;
+      t.skip = false; t.skipWhy = '';
     } catch (e) {
-      if (t.via) { t.skip = true; t.lat = t.lon = null; continue; }   // un punto di passaggio non trovato non blocca il calcolo
+      if (t.via) { t.skip = true; t.skipWhy = 'non localizzato'; t.lat = t.lon = null; continue; }   // un punto di passaggio non trovato non blocca il calcolo
       throw new Error(`${tag}: ${errMsg(e)}`);
     }
-    if (opt.italia && !inItaly(t)) { if (t.via) { t.skip = true; continue; } throw new Error(`${tag} è localizzata fuori Italia (${t.trovato || t.indirizzo}). Se la trasferta è all'estero spunta "Trasferta all'estero", altrimenti correggi l'indirizzo.`); }
+    if (opt.italia && !inItaly(t)) { if (t.via) { t.skip = true; t.skipWhy = 'fuori Italia'; continue; } throw new Error(`${tag} è localizzata fuori Italia (${t.trovato || t.indirizzo}). Se la trasferta è all'estero spunta "Trasferta all'estero", altrimenti correggi l'indirizzo.`); }
   }
   if (cfgChanged) await saveConfig(cfg).catch(() => {});
 }
 async function computeKm(s, p) {
   if ((s.tappe || []).length < 2) throw new Error('Servono almeno due tappe.');
   await resolveTappe(s, {italia: !p?.estero});
-  const incl = s.tappe.map((t, i) => i).filter(i => !s.tappe[i].skip);
+  let incl = s.tappe.map((t, i) => i).filter(i => !s.tappe[i].skip);
   if (incl.length < 2) throw new Error('Servono almeno due tappe localizzate.');
-  const pts = incl.map(i => ({lat: s.tappe[i].lat, lon: s.tappe[i].lon})); if (s.ritorno) pts.push(pts[0]);
+  const route = async idx => { const pts = idx.map(i => ({lat: s.tappe[i].lat, lon: s.tappe[i].lon})); if (s.ritorno) pts.push(pts[0]); return orsRoute(pts); };
   let r;
-  try { r = await orsRoute(pts); }
+  try { r = await route(incl); }
   catch (e) { throw new Error(errMsg(e) + ' Tappe localizzate: ' + incl.map(i => `${TL[i] || i + 1} = ${s.tappe[i].trovato || s.tappe[i].indirizzo || tappaNome(s.tappe[i])}`).join('; ')); }
+  // controllo di plausibilità: se i punti di passaggio allungano il percorso più del 25%, sono localizzati male e vengono ignorati
+  const main = incl.filter(i => !s.tappe[i].via);
+  if (main.length >= 2 && main.length < incl.length) {
+    const d = await route(main).catch(() => null);
+    if (d && r.totale > d.totale * 1.25) { for (const i of incl) if (s.tappe[i].via) Object.assign(s.tappe[i], {skip: true, skipWhy: 'deviazione anomala'}); r = d; incl = main; }
+  }
   const tr = s.tappe.map(() => null); r.tratti.forEach((km, k) => { if (incl[k] != null) tr[incl[k]] = km; });
   s.tratti = tr; s.km = Math.round(r.totale); s.kmFonte = 'mappa';
   if (s._ai) delete s._ai.km;
@@ -1147,7 +1159,7 @@ Restituisci questo JSON:
  "nota":"dubbi o cose da verificare, in una o due frasi"|null
 }
 Spostamenti con auto propria: crea una spesa "km" con le tappe in ordine (partenza, tappe intermedie, destinazione). Se manca la partenza usa il luogo noto "Casa". Per i luoghi noti metti luogoId; per aziende o luoghi non noti cerca sul web l'indirizzo della sede o dello stabilimento e mettilo in "indirizzo". Se il viaggio torna al punto di partenza usa "ritorno":true invece di ripetere la tappa. kmStima è solo la tua stima: la distanza verrà ricalcolata sulla mappa. Se parte del viaggio è fatta con altri mezzi (treno, aereo, taxi) crea quelle spese e una spesa "km" solo per i tratti in auto; più spese "km" sono ammesse.
-Caselli autostradali: se ci sono transiti Telepass, biglietti o ricevute di caselli, usali per ricostruire il percorso reale. Aggiungi ogni casello di entrata e di uscita come tappa di passaggio, nell'ordine di percorrenza: {"luogoId":null,"nome":"Casello <nome> (<autostrada>)","indirizzo":"casello autostradale <nome>, <comune>, Italia","passaggio":true}. Usa il casello di uscita per capire la zona della destinazione quando il testo non la precisa. Le tappe con "passaggio":true servono solo a guidare il calcolo dei km. Negli indirizzi italiani aggiungi sempre ", Italia".
+Caselli autostradali: se ci sono transiti Telepass, biglietti o ricevute di caselli, usali per ricostruire il percorso reale. Aggiungi ogni casello di entrata e di uscita come tappa di passaggio, nell'ordine di percorrenza: {"luogoId":null,"nome":"Casello <nome> (<autostrada>)","indirizzo":"<comune in cui si trova il casello>, <sigla provincia>, Italia","passaggio":true} (es. casello Carsoli-Oricola → "Carsoli, AQ, Italia"; casello Roma Est → "Roma, RM, Italia"). Non scrivere "casello autostradale" nell'indirizzo. Non duplicare caselli già percorsi nello stesso verso. Usa il casello di uscita per capire la zona della destinazione quando il testo non la precisa. Le tappe con "passaggio":true servono solo a guidare il calcolo dei km. Negli indirizzi italiani aggiungi sempre ", Italia".
 Deal: usa dealId solo se corrisponde a un deal noto; altrimenti null.
 Telepass: includi solo i transiti nelle date della pratica e coerenti col percorso, una spesa "pedaggio" per giorno con la somma dei transiti.
 Non creare spese per voci che non risultano né dai documenti né dal testo.`});
@@ -1420,7 +1432,7 @@ function kmForm(ed) {
       ${!t.luogoId && t.altro ? `<input data-taddr="${i}" value="${esc(t.indirizzo || t.nome || '')}" placeholder="Indirizzo o nome azienda"><button class="btn sm" data-tfind="${i}">Trova</button>` : ''}
       <label class="small muted" style="display:inline-flex;gap:4px;align-items:center" title="Punto di passaggio (es. casello): serve a far seguire il percorso reale, non è una destinazione"><input type="checkbox" data-tvia="${i}" ${t.via ? 'checked' : ''}> passaggio</label>
       <button class="icon-btn" data-tdel="${i}" title="Rimuovi tappa">${ICON.x}</button>
-      ${t.skip ? `<div class="tinfo" style="color:var(--warn)">Punto di passaggio non localizzato: ignorato nel calcolo</div>` : ''}
+      ${t.skip ? `<div class="tinfo" style="color:var(--warn)">Punto di passaggio ${esc(t.skipWhy || 'non localizzato')}: ignorato nel calcolo</div>` : ''}
       ${lu ? `<div class="tinfo">${esc(lu.indirizzo || '')}</div>` : (!t.luogoId && t.lat != null ? `<div class="tinfo">${ICON.pin} ${esc(t.indirizzo)} <button class="linkbtn" data-tsave="${i}">Salva in anagrafica</button></div>` : '')}
       ${s.tratti?.[i] != null ? `<div class="tkm">↓ ${fmtK(s.tratti[i])} km${s.ritorno && i === s.tappe.length - 1 ? ' (ritorno a ' + esc(tappaNome(s.tappe[0])) + ')' : ''}</div>` : ''}
     </div>`;
